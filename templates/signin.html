@@ -3,19 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='/js/register.js')}}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/signin.css')}}">
     <title>Register for Mosaic</title>
 </head>
 <body>
     <div id="container">
         <h1>Login to Mosaic</h1>
-        <form>
-            <label for="email">Enter your EMail ID</label> <br>
+        <!--Part1-->
+        <form id="signup-form" {% if show_verify %} style="display: none;" {% endif %} method="post">
+            <label for="email">Enter your Email ID</label>
             <input type="email" id="email" name="email" required> <br>
-            <label for="name">Enter your first and last name</label> <br>
+            <label for="name">Enter your first and last name</label><br>
             <label for="name">This name will be used in leaderboards!</label> <br>
-            <input type="text" id="name" name="name" required>
+            <input type="text" id="name" name="name" required> <br>
+            <button type="submit">Send Verification code</button>
+        </form>
+        <!-- Part2 -->
+        <form id="verify-form" {% if not show_verify %} style="display: none;" {% endif %} method="post">
+            <label for="code">Enter the verification code sent to your email</label> <br>
+            <input type="text" id="code" inputmode="numeric" name="code" required> <br>
+            <button type="submit">verify-form</button>
+            <div>{{message}}</div>
         </form>
     </div>
+    <script src="{{url_for('static', filename='js/register.js')}}"></script>
 </body>
 </html>
