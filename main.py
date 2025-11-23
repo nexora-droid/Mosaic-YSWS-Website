@@ -102,7 +102,9 @@ def send_verfication_email(to_email, user_name, code):
     except Exception as e:
         print(f"Failed to send email {e}")
 
-
+@app.route('/dashboard')
+def dashboard():
+    return render_template('dashboard.html')
 
 if __name__ == "__main__":
     app.run(port=4000, debug=True)
