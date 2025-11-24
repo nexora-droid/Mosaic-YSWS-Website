@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Mosaic Dashboard {% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/basenav.css')}}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css')}}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add" />
 </head>
 <body>
     <!--TO DO:
@@ -22,13 +23,33 @@
     <!--Nav Bar-->
     <div id="navbar">
         <div id="part1">
-            <p class="nav-part">My Projects</p>
+            <p class="nav-part current">My Projects</p>
             <p class="nav-part">Leaderboard</p>
             <p class="nav-part">My Profile</p>
             <p class="nav-part">Shop</p>
+            <p class="nav-part">My Stats</p>
         </div> 
         <div id="part2">
             <p>MOSAIC</p>
+        </div>
+    </div>
+    <div id="decor">
+        <img src="https://hc-cdn.hel1.your-objectstorage.com/s/v3/00d33f270602bed21515a11143abd13f24f4a5d9_websitedecor.png" id="img1">
+        <img src="https://hc-cdn.hel1.your-objectstorage.com/s/v3/6744b79e66c6963e94189a886b7bfe544e75135f_websitedecor_2_.png" id="img2">
+    </div>
+    <!--Projects Page-->
+    <div id="overlay">
+        
+    </div>
+    <div id="page">
+        <div id="project-add">
+            <div id="line1">
+                <p>Your Projects</p>
+                <span class="material-symbols-outlined" id="icon">add</span>
+            </div>
+            <div id="line2" class="hackatime">
+                <button id="connect">Connect to Hackatime first!</button>
+            </div>
         </div>
     </div>
 </body>

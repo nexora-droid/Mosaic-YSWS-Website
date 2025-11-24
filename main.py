@@ -65,7 +65,7 @@ def signin():
             db.session.commit()
             send_verfication_email(exsisting_user.email, exsisting_user.name, code)
             session['pending_email'] = exsisting_user.email
-            return render_template('signin.html', message = "Code Sent!")
+            return render_template('signin.html', message = "Code Sent!", show_verify=True)
         
         new_user = User(
             name = name,
@@ -78,7 +78,7 @@ def signin():
 
         send_verfication_email(email, name, code)
         session['pending_email'] = email
-        return render_template('signin.html', message = "Code Sent!")
+        return render_template('signin.html', message = "Code Sent!", show_verify = True)
     
     return render_template('signin.html')        
 def send_verfication_email(to_email, user_name, code):
