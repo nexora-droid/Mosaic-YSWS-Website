@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Bungee+Spice&family=Jersey+25&family=Momo+Trust+Display&display=swap');
+:root{
+    /*Source of Colors: https://coolors.co/e63946-2a9d8f-f1faee-f4d35e-4caf50 */
+    --punch-red: #e63946;
+    --pine-green: #2a9d8f;
+    --honeydew: #f1faee;
+    --royal-gold: #f4d35e;
+    --medium-jungle: #4caf50; /* what are these coolors.co names? */
+}
+body{
+    margin: 0;
+    background-color: var(--honeydew);
+    font-family: 'Momo Trust Display', sans-serif;
+}
+#navbar{
+    display: flex;
+    flex-direction: row;
+    justify-content:space-between;
+    gap: 10px;
+    font-family: 'Momo Trust Display', sans-serif;
+    background: var(--punch-red);
+    color: #f6f4d2;
+    position: relative;
+    z-index: 10;
+}
+#part1{
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 15px;
+    font-family: 'Momo Trust Display', sans-serif;
+    margin: 5px;
+}
+#part2{
+    font-family: 'Momo Trust Display', sans-serif;
+    margin: 5px;
+}
+.nav-part{
+    transition: all 0.3s ease-in-out;
+    text-shadow: none;
+}
+.nav-part:hover{
+    text-shadow: 0px 0px 20px var(--royal-gold);
+    cursor: pointer;
+}
+.current{
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-underline-offset: 5px;
+}
+#part1{
+    margin-left: 20px;
+}
+#part2{
+    margin-right: 20px;
+}
+#page{
+    display: flex;
+    justify-content: center;
+}
+th {
+    background-color: var(--pine-green);
+    color: white;
+}
+tr {
+    background-color: gray;
+}
+th, tr{
+    border: none;
+
+}

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/leaderboard.css')}}">
+    <title>Leaderboard</title>
+</head>
+<body>
+    <div id="navbar">
+        <div id="part1">
+            <p class="nav-part">My Projects</p>
+            <p class="nav-part current">Leaderboard</p>
+            <p class="nav-part">My Profile</p>
+            <p class="nav-part">Shop</p>
+            <p class="nav-part">My Stats</p>
+        </div> 
+        <div id="part2">
+            <p>MOSAIC</p>
+        </div>
+    </div>
+    <div id="leaderboard">
+        <!--STATIC LEADERBOARD-->
+        <h1>Leaderboard</h1>
+        <table>
+            <tr>
+                <th>User</th>
+                <th>Hours</th>
+                <th>Total Number of Tiles</th>
+            </tr>
+            <tr>
+                <td>User1</td>
+                <td>10</td>
+                <td>300</td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>
