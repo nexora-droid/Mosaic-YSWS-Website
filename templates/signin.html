@@ -9,7 +9,8 @@
 <body>
     <div id="container">
         <h1>Login to Mosaic</h1>
-        <!--Part1-->
+        <!--
+        Part1
         <form id="signup-form" {% if show_verify %} style="display: none;" {% endif %} method="post">
             <label for="email">Enter your Email ID (the one you are using in Slack / Hackatime)</label>
             <input type="email" id="email" name="email" required> <br>
@@ -18,13 +19,18 @@
             <input type="text" id="name" name="name" required> <br>
             <button type="submit">Sign Up!</button>
         </form>
-        <!-- Part2 -->
+        Part2
         <form id="verify-form" {% if not show_verify %} style="display: none;" {% endif %} method="post">
             <label for="code">Enter the verification code sent to your email</label> <br>
             <input type="text" id="code" inputmode="numeric" name="code" required> <br>
             <button type="submit">Verify</button>
             <div>{{message}}</div>
         </form>
+        -->
+        <button id="slack">
+            <img src= "{{url_for('static', filename='images/slacklogo.png')}}" style="width: 20px; height: 20px; vertical-align:text-bottom;">
+            Sign In With Slack
+        </button>
     </div>
     <script src="{{url_for('static', filename='js/signin.js')}}"></script>
 </body>
