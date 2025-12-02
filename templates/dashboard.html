@@ -48,18 +48,13 @@
             </div>
             <div id="line2" class="hackatime">
                 {% if not auto_connected %}
-                <button id="connect">Connect to Hackatime first!</button>
-                <div id="api-key-input">
-                    <p>Copy your API key from <a href="https://hackatime.hackclub.com/settings" target="_blank">Hackatime Settings</a> (dw this is confidential) and paste it below: </p>
-                    <input type="text" id="hackatime-api-key" placeholder="Paste API Key here">
-                    <button id="save-key">Save API Key</button>
-                </div>
+                <p>Hackatime Auto Connect not available please sign in with slack again!</p>
                 {% else %}
                 <p>Connected to Hackatime</p>
                 {% endif %}
             </div>
-            <div class="overlay-hidden" id="add-projectg" style="display: none;">
-                <h2>Add New Project</h2>
+            <div class="overlay-hidden" id="add-project" style="display: none;">
+                <h2>Add New Project</h2>3
                 <form id="add-project-form">
                     <label for="project-name">Enter Project Name: </label>
                     <input type="text" id="project-name" name="project-name" required>

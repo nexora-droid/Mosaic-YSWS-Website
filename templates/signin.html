@@ -27,10 +27,12 @@
             <div>{{message}}</div>
         </form>
         -->
-        <button id="slack">
-            <img src= "{{url_for('static', filename='images/slacklogo.png')}}" style="width: 20px; height: 20px; vertical-align:text-bottom;">
-            Sign In With Slack
-        </button>
+        <a href="{{ slack_auth_url }}" target="_blank">
+            <button id="slack">
+                <img src= "{{url_for('static', filename='images/slacklogo.png')}}" style="width: 20px; height: 20px; vertical-align:text-bottom;">
+                Sign In With Slack
+            </button>
+        </a>
     </div>
     <script src="{{url_for('static', filename='js/signin.js')}}"></script>
 </body>

@@ -88,7 +88,7 @@ addProjectForm.addEventListener("submit", async (e)=>{
 
     const projectName = document.getElementById('project-name').value;
     const projectDetail = document.getElementById('project-detail').value;
-    const hackProject = document.getElementById('hack-project').value;
+    const hackProjectValue = document.getElementById('hack-project').value;
     
     const response = await fetch("/api/add-project", {
         method: "POST",
@@ -98,7 +98,7 @@ addProjectForm.addEventListener("submit", async (e)=>{
         body: JSON.stringify({
             name: projectName,
             detail: projectDetail,
-            hackProject: hackProject
+            hackProject: hackProjectValue
         })
     });
     const data = await response.json();
@@ -119,19 +119,4 @@ addProjectForm.addEventListener("submit", async (e)=>{
     } else {
         alert("Failed to add Project: " + (data.error || "Unknown error"));
     }
-});
-const connectButton = document.getElementById("connect");
-const apiKeyInput = document.getElementById("api-key-input");
-const saveButton = document.getElementById("save-key");
-
-connectButton?.addEventListener("click", ()=>{
-    apiKeyInput.style.display = "block";
-    connectButton.style.display = "none";
-});
-saveButton?.addEventListener("click", async ()=>{
-    const apiKey = document.getElementById("hackatime-api-key").value.trim();
-    if (!apiKey){
-        return alert("Please paste your API Key! If you worry this isn't safe, please reach out to @the space man, and he will guide you!")
-    }
-    const res = await fetch("/api/save-hackatimep-key")
 });
