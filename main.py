@@ -231,4 +231,4 @@ def leaderboard():
 
 
 if __name__ == "__main__":
-    app.run(port=3700, debug=False, threaded=True)
+    app.run(port=3700, debug=True)

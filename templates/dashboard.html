@@ -9,16 +9,23 @@
 </head>
 <body>
     <!--TO DO:
-    1. Navbar
-    2. Connect Hackatime button.
-    3. Add project
-        3i. add project button in center
-        3ii. Overlay to add project name and details
+    1. Navbar - DONE
+    2. Connect Hackatime button. - DONE
+    3. Add project - DONE
+        3i. add project button in center - DONE
+        3ii. Overlay to add project name and details - DONE
         3iii. Submission System
         3iv. Admin review system
     4. Leaderboard Draft
     5. Shop System Draft (rather have a in progress banner 😭)
     6. Profile Settings
+    7. Statistics Page 
+        7i. Hours spent graph if possbile
+        7ii. Total Hours ever
+        7iii. Streak
+        7iv. Projects Completed
+        7v. Projects In Review
+        
         -->
     <!--Nav Bar-->
     <div id="navbar">
@@ -79,11 +86,11 @@
             </div>
             <div id="line3">
                 {% for sp in saved_projects %}
-                <div class="project-box">
+                <div class="project-box" data-hackatime-project="{{ sp.hackatime_project }}">
                     <p class="open">{{ sp.name }}</p>
                     <div class="hidden">
-                        <p>Hours spent: {{ (sp.total_seconds // 3600) if sp.total_seconds else 0 }}</p>
-                        <p><span style="font-style: italic;">{{ sp.detail or 'No Description' }}</span></p>
+                        <p class="hours-display">Hours spent: Fetching...</p>
+                        <p id="detail"><span style="font-style: italic;">{{ sp.detail or 'No Description' }}</span></p>
                         <input type="checkbox" value="review" name="review"  class="review-status">
                         <label for="checkbox">In Review</label>
                         <input type="checkbox" value="shipped" class="last-part shipped-status"> 
@@ -91,17 +98,6 @@
                     </div>
                 </div>
                 {% endfor %}
-                <div class="project-box">
-                    <p class="open">Project 1</p>
-                    <div class="hidden">
-                        <p>Hours spent: <!--Need to add hours tracking for that project here!--></p>
-                        <p><span style="font-style: italic;">Temp Project</span></p>
-                        <input type="checkbox" value="review" name="review"  class="review-status">
-                        <label for="checkbox">In Review</label>
-                        <input type="checkbox" value="shipped" class="last-part shipped-status"> 
-                        <label for="checkbox">Shipped</label>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

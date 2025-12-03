@@ -127,10 +127,12 @@ body{
     border: none;
     border-radius: 20px;
     height: 30px;
+    text-align: left;
+    vertical-align: middle;
 }
 .project-box p{
-    margin-left: 15px;
-    line-height: 25px;
+    /*margin-left: 15px;
+    line-height: 25px;*/
 }
 .project-box input{
     margin-left: 15px;
@@ -235,4 +237,7 @@ body{
 #api-key-input{
     display: none;
     margin-top: 10px;
+}
+#detail {
+    vertical-align: middle;
 }
