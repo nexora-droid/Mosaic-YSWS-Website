@@ -4,7 +4,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
         btn.classList.add('active');
-        const tabId = btn.dataset + '-tab';
+        const tabId = btn.dataset.tab + '-tab';
         document.getElementById(tabId).classList.add('active');
     });
 });
@@ -139,7 +139,7 @@ async function submitReview(event, projectId) {
                 return;
             }
             if (comment.trim()){
-                const commentResponse = await fetch(`/admin/api/add-comment/${projectId}`, {
+                const commentResponse = await fetch(`/admin/api/comment-project/${projectId}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -203,7 +203,7 @@ async function quickReject(projectId) {
             alert('Error Rejecting project!');
             return;
         }
-        await fetch(`/admin/api/add-comment${projectId}`, {
+        await fetch(`/admin/api/comment-project/${projectId}`, {
             method: 'POST',
             headers: {'Content-Type' : 'application/json'},
             body: JSON.stringify({'comment': comment})
@@ -218,7 +218,7 @@ async function quickReject(projectId) {
     }  
 }
 async function assignToSelf(projectId) {
-    if (!confirm('Assign this project to yourself?')) reutrn;
+    if (!confirm('Assign this project to yourself?')) return;
     try {
         const response = await fetch (`/admin/api/assign-project/${projectId}`, {
             method: 'POST',
@@ -244,7 +244,7 @@ function closeThemeModal(){
 }
 async function submitTheme(event){
     event.preventDefault();
-    const name = document.getElementById('theme-name').value();
+    const name = document.getElementById('theme-name').value;
     const description = document.getElementById('theme-description').value;
     try {
         const response = await fetch(`/admin/api/add-theme`, {
