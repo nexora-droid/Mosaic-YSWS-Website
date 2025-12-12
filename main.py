@@ -23,7 +23,8 @@ is_vercel = os.getenv("VERCEL_ENV") == "production"
 app.secret_key = os.getenv("SECRET_KEY")
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, "db.sqlite3")
-if (os.getenv("VERCEL_ENV")) == "production":
+is_render=os.getenv("RENDER") == "TRUE"
+if (is_render):
     app.config["SQLALCHEMY_DATABASE_URI"]=os.getenv("DATABASE_URL")
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
         "connect_args":{'sslmode': 'require'}
@@ -575,4 +576,5 @@ def admin_delete_theme(theme_id):
     db.session.commit()
     return flask.jsonify({'message': 'Theme deleted successfully'}), 200
 if __name__ == "__main__":
-    app.run(port=3700, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host="0.0.0.0", port=port)
