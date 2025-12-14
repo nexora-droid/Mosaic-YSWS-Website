@@ -24,7 +24,7 @@ app.secret_key = os.getenv("SECRET_KEY")
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, "db.sqlite3")
 is_render=os.getenv("RENDER") == "TRUE"
-if (is_render):
+if (is_vercel):
     app.config["SQLALCHEMY_DATABASE_URI"]=os.getenv("DATABASE_URL")
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
         "connect_args":{'sslmode': 'require'}
