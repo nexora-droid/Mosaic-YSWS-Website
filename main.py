@@ -19,18 +19,46 @@ import sys
 load_dotenv()
 
 app = Flask(__name__)
-is_vercel = os.getenv("VERCEL_ENV") == "production"
 app.secret_key = os.getenv("SECRET_KEY")
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, "db.sqlite3")
-is_render=os.getenv("RENDER") == "TRUE"
-if (is_vercel):
-    app.config["SQLALCHEMY_DATABASE_URI"]=os.getenv("DATABASE_URL")
+is_vercel = os.getenv("VERCEL_ENV") is not None  # Any Vercel environment
+is_render = os.getenv("RENDER") == "TRUE"
+
+
+if is_vercel:
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        print("ERROR: DATABASE_URL not set for Vercel deployment!")
+        database_url = "postgresql://localhost/fallback"
+    
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-        "connect_args":{'sslmode': 'require'}
+        "pool_pre_ping": True,  
+        "pool_recycle": 300,    
+        "pool_size": 2,         
+        "max_overflow": 0,      
+        "connect_args": {
+            "sslmode": "require",
+            "connect_timeout": 10,
+            "application_name": "vercel_app",  
+        }
     }
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    
+elif is_render:
+    database_url = os.getenv("DATABASE_URL")
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "connect_args": {'sslmode': 'require'}
+    }
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 else:
-    app.config["SQLALCHEMY_DATABASE_URI"]=f"sqlite:///{DB_PATH}"
+    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+    DB_PATH = os.path.join(BASE_DIR, "db.sqlite3")
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
 db = SQLAlchemy(app)
 HACKATIME_API_KEY = os.getenv("HACKATIME_API_KEY")
 HACKATIME_BASE_URL = "https://hackatime.hackclub.com/api/v1"
