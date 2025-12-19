@@ -254,6 +254,7 @@ body {
     max-height: 90vh;
     overflow-y: auto;
     position: relative;
+    margin-top: 70px;
 }
 .modal-content.large{
     max-width: 1000px;

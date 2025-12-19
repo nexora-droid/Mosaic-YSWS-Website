@@ -59,7 +59,7 @@ async function viewProject(projectId) {
                 <h3>Links</h3>
                 <ul class="link-list">
                     ${project.github_url ? `<li><a href="${project.github_url}" target="_blank">Github Repository </a></li>` : ''}
-                    ${project.demo_url ? `<li><a href=${project.demo_url}" target="_blank">Live Demo </a></li>` : ''}
+                    ${project.demo_url ? `<li><a href="${project.demo_url}" target="_blank">Live Demo </a></li>` : ''}
                 </ul>
             </div> ` : ''}
         
@@ -68,10 +68,12 @@ async function viewProject(projectId) {
                 <h3>Previous Comments</h3>
                 ${project.comments.map(comment => `
                     <div class="info-item" style="margin-bottom: 10px;">
-                        <div class="info-label">${comment.admin_name}- ${comment.created_at}</div>`
+                       <div class="info-label">${comment.admin_name} - ${new Date(comment.created_at).toLocaleString()}</div>
+                        <div class="info-value">${comment.comment}</div>
+                    </div>`
                     ).join('')}
-                    </div>
-                    ` : ''}
+             </div>
+        ` : ''}
                     <div class="review-form">
                         <h3>Review Project</h3>
                         <form id="review-form-${projectId}" onsubmit="submitReview(event, ${projectId})">
@@ -81,7 +83,7 @@ async function viewProject(projectId) {
                             </div>
                             <div class="form-group">
                                 <label for="theme-${projectId}">Theme/Category</label>
-                                <input type="text" id="theme-${projectId}">value="${project.theme || ''}" placeholder="e.g., Web Development, Game, AI>
+                                <input type="text" id="theme-${projectId}" value="${project.theme || ''}" placeholder="e.g., Web Development, Game, AI>
                             </div>
                             <div class="form-group">
                                 <label for="status-${projectId}">Status</label>
@@ -240,6 +242,7 @@ function openThemeModal(){
 }
 function closeThemeModal(){
     document.getElementById('theme-modal').classList.add('hidden');
+    document.getElementById('theme-modal').classList.add('hidden');
     document.getElementById('theme-form').reset();
 }
 async function submitTheme(event){
@@ -275,6 +278,7 @@ async function manageThemes() {
                         <h4>${theme.name}</h4>
                         <p>${theme.description || 'No Description'}</p>
                     </div>
+                    <button class="delete-theme-btn" onclick="deleteTheme(${theme.id})">Delete Theme</button>
                     <button class="delete-theme-btn" onclick="deleteTheme(${theme.id})">Delete Theme</button>
                 </div>
                 `).join('');

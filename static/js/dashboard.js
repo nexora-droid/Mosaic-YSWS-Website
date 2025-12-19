@@ -87,7 +87,7 @@ window.addEventListener("DOMContentLoaded", () => {
                         ${project.demo_url ? `<p><a href="${project.demo_url}" target="_blank">Live Demo</a></p>`: ""}
                     </div>
                     `:''}
-                ${project.comments && project.comments > 0 ? `
+                ${project.comments && project.comments.length > 0 ? `
                     <div class="details-section">
                         <h3>Admin Comments</h3>
                         <div class="comment-list">
