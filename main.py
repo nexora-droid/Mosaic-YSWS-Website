@@ -1,7 +1,5 @@
 import flask
 import os
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, render_template, redirect, session, url_for, flash
 from datetime import datetime, timedelta
 import requests
@@ -21,6 +19,13 @@ db = firestore.client()
 
 HACKATIME_API_KEY = os.getenv("HACKATIME_API_KEY")
 HACKATIME_BASE_URL = "https://hackatime.hackclub.com/api/v1"
+
+#hackclub
+HACKCLUB_CLIENT_ID = os.getenv("HACKCLUB_CLIENT_ID")
+HACKCLUB_CLIENT_SECRET = os.getenv("HACKCLUB_CLIENT_SECRET")
+HACKCLUB_REDIRECT_URI = os.getenv("HACKCLUB_REDIRECT_URI")
+HACKCLUB_AUTH_BASE = "https://auth.hackclub.com"
+
 ADMIN_SLACK_IDS = [
     slack_id.strip() 
     for slack_id in os.getenv("ADMIN_SLACK_IDS", "").split(",") 
@@ -31,7 +36,10 @@ if not ADMIN_SLACK_IDS:
     print("WARNING: No admin Slack IDs configured!")
 
 if not HACKATIME_API_KEY:
-    print("WARNING HACKATIME API KEY NOT WORKING!")
+    print("WARNING: HACKATIME API KEY NOT WORKING!")
+
+if not HACKCLUB_CLIENT_ID or not HACKCLUB_CLIENT_SECRET:
+    print("WARNING: Hack Club OAuth credentials not configured!")
 
 def autoconnectHackatime():
     return {"Authorization": f"Bearer {HACKATIME_API_KEY}"}
@@ -55,68 +63,126 @@ def get_user_by_slack_id(slack_id):
         return user_data
     return None
 
+def get_user_by_identity_id(identity_id):
+    users = db.collection('users').where('identity_id', '==', identity_id).limit(1).stream()
+    for user in users:
+        user_data = user.to_dict()
+        user_data['id'] = user.id
+        return user_data
+    return None
+
 @app.route("/")
 def main():
     return render_template('index.html')
 
 @app.route('/signin', methods=['GET', 'POST'])
 def signin():
-    client_id = os.getenv('CLIENT_ID')
-    redirect_uri = os.getenv('SLACK_REDIRECT_URI')
-    redirect_url = f"https://slack.com/oauth/v2/authorize?client_id={client_id}&scope=users:read&user_scope=identity.basic&redirect_uri={redirect_uri}"
-    return render_template('signin.html', slack_auth_url=redirect_url)
+    auth_url = (
+        f"{HACKCLUB_AUTH_BASE}/oauth/authorize?"
+        f"client_id={HACKCLUB_CLIENT_ID}&"
+        f"redirect_uri={HACKCLUB_REDIRECT_URI}&"
+        f"response_type=code&"
+        f"scope=openid profile email name slack_id verification_status"
+    )
+    return render_template('signin.html', hackclub_auth_url=auth_url)
 
-@app.route('/slack/callback', methods=['GET', 'POST'])
-def callback():
+@app.route('/hackclub/callback', methods=['GET'])
+def hackclub_callback():
     code = request.args.get('code')
+    error = request.args.get('error')
+    
+    if error:
+        return f"Authorization failed: {error}", 400
+    
     if not code:
-        return "No Code Received from Slack", 400
+        return "No authorization code received from Hack Club Auth", 400
     
-    payload = {
-        "client_id": os.getenv('CLIENT_ID'),
-        "client_secret": os.getenv('CLIENT_SECRET'),
+    token_payload = {
+        "client_id": HACKCLUB_CLIENT_ID,
+        "client_secret": HACKCLUB_CLIENT_SECRET,
+        "redirect_uri": HACKCLUB_REDIRECT_URI,
         "code": code,
-        "redirect_uri": os.getenv('SLACK_REDIRECT_URI')
+        "grant_type": "authorization_code"
     }
-    response = requests.post("https://slack.com/api/oauth.v2.access", data=payload)
-    data = response.json()
     
-    if not data.get('ok'):
-        return f"Slack OAuth Failed with error code {data.get('error')}", 400
-    
-    slack_user_id = data["authed_user"]["id"]
-    slack_access_token = data["authed_user"]["access_token"]
-    
-    #check if user exists alr
-    user = get_user_by_slack_id(slack_user_id)
-    
-    if not user:
-        # new user
-        user_data = {
-            'slack_id': slack_user_id,
-            'name': None,
-            'role': 'Admin' if slack_user_id in ADMIN_SLACK_IDS else 'User',
-            'date_created': datetime.utcnow(),
-            'hackatime_username': None,
-            'slack_token': slack_access_token,
-            'tiles_balance': 0
-        }
-        user_ref = db.collection('users').document()
-        user_ref.set(user_data)
-        user_id = user_ref.id
-    else:
-        # update user
-        user_id = user['id']
-        db.collection('users').document(user_id).update({
-            'slack_token': slack_access_token
-        })
-        user = get_user_by_id(user_id)
-    
-    session['user_id'] = user_id
-    
-    if is_admin(user):
-        return redirect('/admin/dashboard')
-    return redirect('/dashboard')
+    try:
+        token_response = requests.post(
+            f"{HACKCLUB_AUTH_BASE}/oauth/token",
+            data=token_payload, 
+            headers={"Content-Type": "application/x-www-form-urlencoded"}  
+        )
+        token_data = token_response.json()
+        
+        if not token_response.ok:
+            return f"Token exchange failed: {token_data.get('error', 'Unknown error')}", 400
+        
+        access_token = token_data.get("access_token")
+        refresh_token = token_data.get("refresh_token")
+        
+        identity_response = requests.get(
+            f"{HACKCLUB_AUTH_BASE}/api/v1/me",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+        
+        if not identity_response.ok:
+            return "Failed to fetch user identity", 400
+        
+        identity_data = identity_response.json()
+        user_identity = identity_data.get("identity", {})
+        
+        identity_id = user_identity.get("id")
+        slack_id = user_identity.get("slack_id")
+        first_name = user_identity.get("first_name")
+        last_name = user_identity.get("last_name")
+        email = user_identity.get("primary_email")
+        verification_status = user_identity.get("verification_status")
+        
+        user = get_user_by_identity_id(identity_id)
+        
+        if not user:
+            # if new user  create account
+            user_data = {
+                'identity_id': identity_id,
+                'slack_id': slack_id,
+                'name': f"{first_name} {last_name}" if first_name and last_name else None,
+                'first_name': first_name,
+                'last_name': last_name,
+                'email': email,
+                'verification_status': verification_status,
+                'role': 'Admin' if slack_id in ADMIN_SLACK_IDS else 'User',
+                'date_created': datetime.utcnow(),
+                'hackatime_username': None,
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'tiles_balance': 0
+            }
+            user_ref = db.collection('users').document()
+            user_ref.set(user_data)
+            user_id = user_ref.id
+        else:
+            #if already a  user update tokens and info
+            user_id = user['id']
+            db.collection('users').document(user_id).update({
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'slack_id': slack_id,
+                'name': f"{first_name} {last_name}" if first_name and last_name else user.get('name'),
+                'first_name': first_name,
+                'last_name': last_name,
+                'email': email,
+                'verification_status': verification_status
+            })
+            user = get_user_by_id(user_id)
+        
+        session['user_id'] = user_id
+        
+        if is_admin(user):
+            return redirect('/admin/dashboard')
+        return redirect('/dashboard')
+        
+    except Exception as e:
+        print(f"OAuth callback error: {e}")
+        return f"Authentication failed: {str(e)}", 500
 
 @app.route('/dashboard')
 def dashboard():
@@ -641,10 +707,10 @@ def admin_delete_theme(theme_id):
     return flask.jsonify({'message': 'Theme deleted successfully'}), 200
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 4000))
     app.run(
         host="0.0.0.0",
         port=port,
-        ssl_context="adhoc",  # remove this in prod
+        ssl_context="adhoc",
         debug=True
     )

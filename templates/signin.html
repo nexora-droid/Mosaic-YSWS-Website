@@ -9,16 +9,10 @@
 <body>
     <div id="container">
         <h1>Login to Mosaic</h1>
-
-        <a href="{{ slack_auth_url }}" target="_blank" class="auth-btn slack-btn">
-            <img src="{{url_for('static', filename='images/slacklogo.png')}}" alt="Slack Logo">
-            Sign In With Slack
+        <a href="{{ hackclub_auth_url }}" class="auth-btn hackclub-btn">
+            <img src="{{ url_for('static', filename='images/hackclublogo.png') }}" alt="Hack Club">
+            Sign in with Hack Club
         </a>
-<!--       
-        <a href="{{ hackclub_auth_url }}" target="_blank" class="auth-btn hackclub-btn">
-            <img src="{{url_for('static', filename='images/hackclublogo.png')}}" alt="Hack Club Logo">
-            Sign In With Hack Club
-        </a> -->
     </div>
     <script src="{{url_for('static', filename='js/signin.js')}}"></script>
 </body>
