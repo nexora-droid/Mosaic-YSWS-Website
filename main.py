@@ -840,7 +840,9 @@ def admin_delete_theme(theme_id):
     
     theme_ref.update({'is_active': False})
     return jsonify({'message': 'Theme deleted successfully'}), 200
-
+@app.route('/api/health')
+def health():
+    return "OK", 200
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 4000))
     app.run(
