@@ -207,7 +207,7 @@ def dashboard():
     
     if auto_connected:
         try:
-            url = f"{HACKATIME_BASE_URL}/users/{user['slack_id']}/stats?features=projects"
+            url = f"{HACKATIME_BASE_URL}/users/{user['slack_id']}/stats?features=projects&&limit=1000&features=projects&start_date=2025-12-23"
             headers = autoconnectHackatime()
             response = requests.get(url, headers=headers, timeout=5)
             
