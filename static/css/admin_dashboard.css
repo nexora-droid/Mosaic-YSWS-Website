@@ -24,23 +24,40 @@ body {
 
 #navbar {
     display: flex;
+    flex-direction: row;
     justify-content: space-between;
-    background-color: var(--punch-red);
+    gap: 10px;
+    font-family: 'Momo Trust Display', sans-serif;
+    background: var(--punch-red);
     color: #f6f4d2;
-    padding: 15px 30px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    padding: 8px 20px;
+    z-index: 100;
+    font-size: 20px;
 }
 
 #part1 {
     display: flex;
-    gap: 20px;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 15px;
     align-items: center;
+}
+
+#part1 p, #part2 p{
+    margin-bottom: 10px;
+    margin-top: 10px;
 }
 
 #part2 {
     font-size: 24px;
     font-weight: bold;
+}
+
+#part1 p, #part2 p{
+    margin-bottom: 10px;
+    margin-top: 10px;
 }
 
 .nav-part {

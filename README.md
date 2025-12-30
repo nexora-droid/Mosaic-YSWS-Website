@@ -1,5 +1,5 @@
 # Mosaic YSWS Website
-
+Credits to [@rexintrael](https://github.com/Rexaintreal) for helping in making the final stages of Mosaic possible and Hack Club's [@dhamariT](https://github.com/dhamariT) for supporting and sponsoring Mosaic.
 ## What is MOSAIC?
 Mosaic is a _full stack_ YSWS (you ship, we ship) programme part of Hack Club. The main goal of _Mosaic_ is to empower teen coders to build amazing full stack web applications using languages of their choice! It can be made using Python, HTML, CSS and JS or anything they wish to use! 
 The estimated duration for Mosaic is ~1 year so we hope it creates an enjoyable experience for all of us.

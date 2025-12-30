@@ -1,13 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Momo+Trust+Display&display=swap');
 
 :root {
-    --punch-red: #e63946;
-    --pine-green: #2a9d8f;
-    --honeydew: #f1faee;
-    --royal-gold: #f4d35e;
-    --medium-jungle: #4caf50;
     --dark-grey: #2c3850;
     --light-grey: #ecf0f1;
+    --porcelain: #fdfffcff;
+    --baltic-blue: #235789ff;
+    --flag-red: #c1292eff;
+    --bright-gold: #f1d302ff;
+    --shadow-grey: #161925ff;
 }
 
 * {
@@ -16,7 +16,7 @@
 
 body {
     margin: 0;
-    background-color: var(--honeydew);
+    background-color:white;
     font-family: 'Momo Trust Display', sans-serif;
     overflow-x: hidden;
 }
@@ -27,12 +27,13 @@ body {
     justify-content: space-between;
     gap: 10px;
     font-family: 'Momo Trust Display', sans-serif;
-    background: var(--punch-red);
+    background: var(--baltic-blue);
     color: #f6f4d2;
     position: sticky;
     top: 0;
+    padding: 8px 20px;
     z-index: 100;
-    padding: 10px 20px;
+    font-size: 20px;
 }
 
 #part1 {
@@ -41,6 +42,11 @@ body {
     justify-content: flex-start;
     gap: 15px;
     align-items: center;
+}
+
+#part1 p, #part2 p{
+    margin-bottom: 10px;
+    margin-top: 10px;
 }
 
 #part2 {
@@ -173,7 +179,7 @@ body {
 }
 
 .icon-btn {
-    background-color: var(--pine-green);
+    background-color: var(--bright-gold);
     border: none;
     border-radius: 50%;
     width: 50px;
@@ -183,12 +189,12 @@ body {
     justify-content: center;
     cursor: pointer;
     transition: all 0.3s ease-in-out;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    /*box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);*/
 }
 
 .icon-btn:hover {
     transform: scale(1.1) rotate(90deg);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+    /*box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);*/
 }
 
 .icon-btn i {
