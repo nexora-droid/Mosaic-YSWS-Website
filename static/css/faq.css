@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Itim&display=swap');
+body {
+    font-family: 'Itim', cursive;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    min-height: 100vh;
+    background: #f5f5f5;
+}
+
+h1 {
+    text-align: center;
+    margin: 40px 0;
+    color: #2c3e50;
+    font-weight: 600;
+    font-size: 32px;
+}
+
+.faq {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 90%;
+    max-width: 700px;
+    margin-bottom: 40px;
+}
+
+.question {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 0;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    overflow: hidden; 
+}
+
+.question:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-color: #d0d0d0;
+}
+
+.question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+}
+
+.question h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.icon {
+    font-size: 24px;
+    font-weight: 300;
+    color: #666;
+    transition: transform 0.3s ease;
+    user-select: none;
+}
+
+.question.active .icon {
+    transform: rotate(180deg);
+}
+
+.question p {
+    max-height: 0; 
+    margin: 0;
+    padding: 0 24px;
+    opacity: 0;
+    color: #555;
+    line-height: 1.6;
+    transition: max-height 0.4s ease, opacity 0.4s ease, padding 0.4s ease;
+}
+
+.question.active p {
+    max-height: 500px; 
+    opacity: 1;
+    padding: 0 24px 20px 24px;
+}
+
+@media (max-width: 768px) {
+    h1 {
+        font-size: 28px;
+        margin: 30px 0;
+    }
+    
+    .question h2 {
+        font-size: 16px;
+    }
+    
+    .question p {
+        font-size: 14px;
+    }
+    
+    .question-header {
+        padding: 16px 20px;
+    }
+    
+    .question.active p {
+        padding: 0 20px 16px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .faq {
+        gap: 12px;
+    }
+}

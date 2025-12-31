@@ -1149,6 +1149,9 @@ def admin_delete_theme(theme_id):
     
     return jsonify({'message': 'Theme deleted successfully'}), 200
 
+@app.route("/faq")
+def faq():
+    return render_template("faq.html")
 
 @app.route('/api/health')
 def health():

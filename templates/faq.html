@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/faq.css')}}">
+    <title>FAQ || Mosaic</title>
+</head>
+<body>
+    <h1>Frequently Asked Questions</h1>
+    <div class="faq">
+        <div class="question">
+            <div class="question-header">
+                <h2>What is this about?</h2>
+                <span class="icon">+</span>
+            </div>
+            <p>Mosaic is similar to <i>Siege</i> but for frontend/backend development! <br> Every month, a random theme is announced and the participants - which is probably YOU - build a full-stack website/application about that theme! A judging team will review your project in 1 week, and you will be awarded Tiles - our currency - based on the quality of your project!
+            </p>
+        </div>
+        <div class="question">
+            <div class="question-header">
+                <h2>Is particpation free?</h2>
+                <span class="icon">+</span>
+            </div>
+            <p>Yes particpation is free for all teenagers registered with Hack Club, aged 13-18. Unless your identity is <b>verified</b> you will not be able to access the webpage!</p>
+        </div>
+        <div class="question">
+            <div class="question-header">
+                <h2>How long will Mosaic last?</h2>
+                <span class="icon">+</span>
+            </div>
+            <p>Mosaic will last for 1 year! Starting January 1, 2026 to December 31, 2026. We look forward to seeing what you make!</p>
+        </div>
+        <div class="question">
+            <div class="question-header">
+                <h2>Can we work in teams?</h2>
+                <span class="icon">+</span>
+            </div>
+            <p>This YSWS has <b>NO PLANS of ALLOWING TEAMS</b>, as we want true full-stack developers (or aspiring ones) to take part in this, and truly feel happy about what they have done! <br> We do not recommend working in teams, and this is why our <b>Skip Policy</b> is in action, as you may want to spend time learning first and then making!</p>
+        </div>
+        <div class="question">
+            <div class="question-header">
+                <h2>What is the judging criteria?</h2>
+                <span class="icon">+</span>
+            </div>
+            <p>For our judging criteria pleaese head over to <a href="https://hackclub.enterprise.slack.com/docs/T0266FRGM/F09SYUXAQPM" target="_blank">The Constituion of Tilemakers</a>. To view this document you will need to be part of the Hack Club Slack.</p>
+        </div>
+        <div class="question">
+            <div class="question-header">
+                <h2>My project hasn't been reviewed for XYZ days/weeks</h2>
+                <span class="icon">+</span>
+            </div>
+            <p>Please note that we have few reviewers who may not be available at all times to review your project. Your project may not be reviewed yet as there may be a break for our reviewing team. Refer to <a href="https://hackclub.enterprise.slack.com/archives/C0A5C87PDBK">#mosaic-help</a> or <a href="https://hackclub.enterprise.slack.com/archives/C0A4HSRB1D5" target="_blank">#mosaic-bulletin</a> for information regarding delayed reviews.</p>
+        </div>
+
+    <script>
+        const questions = document.querySelectorAll('.question');
+
+        questions.forEach(q => {
+            q.addEventListener('click', () => {
+                q.classList.toggle('active');
+                const icon = q.querySelector('.icon');
+                icon.textContent = q.classList.contains('active') ? '−' : '+';
+            });
+        });
+    </script>
+</body>
+</html>
