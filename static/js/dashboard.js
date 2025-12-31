@@ -78,7 +78,7 @@ function renderProjectDetails(project) {
             <div class="detail-value">
                 ${project.github_url ? 
                     `<a href="${project.github_url}" target="_blank">${project.github_url}</a>` : 
-                    'N/A or if exists link'}
+                    'N/A. Add a link while submitting!'}
             </div>
         </div>
         
@@ -87,7 +87,7 @@ function renderProjectDetails(project) {
             <div class="detail-value">
                 ${project.demo_url ? 
                     `<a href="${project.demo_url}" target="_blank">${project.demo_url}</a>` : 
-                    'N/A or if exists link'}
+                    'N/A. Add a link while submitting!'}
             </div>
         </div>
         
@@ -120,7 +120,7 @@ function renderProjectDetails(project) {
         ` : `
             <div class="project-detail-item">
                 <div class="detail-label">Reviewer Comments</div>
-                <div class="detail-value">Comment here</div>
+                <div class="detail-value">No Comments on your project yet!</div>
             </div>
         `}
         
