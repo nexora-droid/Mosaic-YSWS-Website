@@ -8,80 +8,47 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div id="navbar">
-        <div id="part1">
-            <p class="nav-part {% if current_page == 'dashboard' %}current{% endif %}" onclick="window.location.href='/dashboard'">My Projects</p>
-            <p class="nav-part {% if current_page == 'leaderboard' %}current{% endif %}" onclick="window.location.href='/leaderboard'">Leaderboard</p>
-            <p class="nav-part {% if current_page == 'shop' %}current{% endif %}" onclick="window.location.href='/shop'">Shop</p>
-            {% if user and is_admin(user) %}
-            <p class="nav-part admin-link {% if current_page == 'admin' %}current{% endif %}" onclick="window.location.href='/admin/dashboard'">Admin Panel</p>
-            {% endif %}
-        </div> 
-        <div id="part2">
-            <p>MOSAIC</p>
+    <nav id="navbar">
+        <div class="nav-tab" onclick="window.location.href='/dashboard'">
+            The Studio
         </div>
-    </div>
+        <div class="nav-tab active">
+            Leaderboard
+        </div>
+        <div class="nav-tab" onclick="window.location.href='/market'">
+            <i class="fas fa-lock"></i> Market
+        </div>
+        {% if user and is_admin(user) %}
+        <div class="nav-tab" onclick="window.location.href='/admin/dashboard'">
+            Admin Dashboard
+        </div>
+        {% endif %}
+        <div class="nav-tab wip">
+            Orpheus
+        </div>
+    </nav>
+
     <div class="leaderboard-container">
         <div class="leaderboard-header">
             <h1>Leaderboard</h1>
-            <p>Top Builders ranked by approved project hours</p>
         </div>
+        
         {% if leaderboard %}
         <div class="leaderboard-table">
             {% for entry in leaderboard %}
-            <div class="leaderboard-row rank-{{loop.index}}">
-                <div class="rank-badge">
-                    {% if loop.index == 1 %}
-                    <div class="rank-medal gold"><i class="fas fa-trophy"></i></div>
-                    {% elif loop.index == 2 %}
-                    <div class="rank-medal silver"><i class="fas fa-medal"></i></div>
-                    {% elif loop.index == 3 %}
-                    <div class="rank-medal bronze"><i class="fas fa-award"></i></div>
-                    {% else %}
-                    <div class="rank-number">#{{loop.index}}</div>
-                    {% endif %}
-                </div>
-                <div class="user-info">
-                    <h3>{{entry.name}}</h3>
-                    <div class="user-stats">
-                        <span class="stat-item">
-                            <i class="fas fa-clock"></i>
-                            {{entry.total_hours}} hrs
-                        </span>
-                        <span class="stat-item">
-                            <i class="fas fa-folder"></i>
-                            {{entry.projects_count}} projects
-                        </span>
-                        <span class="stat-item">
-                            <i class="fas fa-dice"></i>
-                            {{entry.tiles}} tiles
-                        </span>
-                    </div>
-                </div>
-                <div class="progress-wrapper">
-                    <div class="progress-bar">
-                        <div class="progress-fill" data-width="{{(entry.total_hours / leaderboard[0].total_hours * 100) if leaderboard[0].total_hours > 0 else 0}}"></div>
-                    </div>
-                </div>
+            <div class="leaderboard-row {% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %}">
+                <div class="user-name">{{entry.name}}</div>
+                <div class="user-tiles">{{entry.tiles}} Tiles</div>
             </div>
             {% endfor %}
         </div>
         {% else %}
         <div class="empty-state">
-            <i class="fas fa-chart-line" style="font-size: 100px; color: var(--royal-gold); margin-bottom: 20px;"></i>
-            <p>No leaderboard data yet. Start building!</p>
+            <p class="empty-message">No leaderboard data yet. Start building!</p>
         </div>
         {% endif %}
     </div>
-    <div id="decor">
-        <img src="https://hc-cdn.hel1.your-objectstorage.com/s/v3/6744b79e66c6963e94189a886b7bfe544e75135f_websitedecor_2_.png" id="img2">
-    </div>
 
     <script src="{{url_for('static', filename='js/alert_modal.js')}}"></script>
-    <script>
-        document.querySelectorAll('.progress-fill').forEach(el => {
-            el.style.width = el.getAttribute('data-width') + '%';
-        });
-    </script>
 </body>
 </html>

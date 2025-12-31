@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coming Soon</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/soon.css')}}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <nav id="navbar">
+        <div class="nav-tab" onclick="window.location.href='/dashboard'">The Studio</div>
+        <div class="nav-tab" onclick="window.location.href='/leaderboard'">Leaderboard</div>
+        <div class="nav-tab active locked"><i class="fas fa-lock"></i> Market</div>
+        {% if user and is_admin(user) %}
+        <div class="nav-tab" onclick="window.location.href='/admin/dashboard'">Admin Dashboard</div>
+        {% endif %}
+        <div class="nav-tab wip">Orpheus</div>
+    </nav>
+
+    <div class="coming-soon-container">
+        <div class="coming-soon-content">
+            <div class="soon-image-wrapper">
+                <img src="{{ url_for('static', filename='images/soon.png')}}" alt="Coming Soon" class="soon-image">
+            </div>
+            
+            <div class="soon-text">
+                <h1>ORPHEUS RELAXXX....</h1>
+                <h2>THIS PAGE IS BEING BUILT FOR YOU!!!</h2>
+                <p class="eta">ETA: Feb 1</p>
+                <button class="return-btn" onclick="window.location.href='/dashboard'">
+                    Return to the Studio
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 import requests
 import firebase_admin
 from firebase_admin import credentials, firestore
+from audit_logger import audit_logger, ActionTypes
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -183,7 +184,17 @@ def hackclub_callback():
             user = get_user_by_id(user_id)
         
         session['user_id'] = user_id
-        
+        audit_logger.log_action(
+            action_type=ActionTypes.USER_LOGIN,
+            user_id=user_id,
+            user_name=user.get('name'),
+            details={
+                'slack_id': slack_id,
+                'email': email,
+                'is_new_user': not user,
+                'verification_status': verification_status
+            }
+        )
         if is_admin(user):
             return redirect('/admin/dashboard')
         return redirect('/dashboard')
@@ -364,10 +375,6 @@ def get_user_projects(user_id):
         
         for proj in projects_ref:
             proj_data = proj.to_dict()
-            # Skip draft projects
-            if proj_data.get('status') == 'draft':
-                continue
-                
             proj_data['id'] = proj.id
             if 'created_at' in proj_data:
                 proj_data['created_at'] = serialize_timestamp(proj_data['created_at'])
@@ -383,6 +390,177 @@ def get_user_projects(user_id):
     except Exception as e:
         print(f"Error fetching user projects: {e}")
         return jsonify({'error': 'Internal Server Error'}), 500
+
+@app.route('/admin/audit-logs')
+def admin_audit_logs():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect("/signin")
+    
+    user = get_user_by_id(user_id)
+    if not is_admin(user):
+        return redirect("/dashboard")
+
+    return render_template('admin_audit_logs.html', user=user)
+
+@app.route('/api/admin/audit-logs', methods=['GET'])
+def get_audit_logs():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    user = get_user_by_id(user_id)
+    if not is_admin(user):
+        return jsonify({'error': 'Forbidden'}), 403
+
+    limit = int(request.args.get('limit', 100))
+    action_type = request.args.get('action_type')
+    filter_user_id = request.args.get('user_id')
+    
+    try:
+        if filter_user_id:
+            logs = audit_logger.get_user_actions(filter_user_id, limit)
+        elif action_type:
+            logs = audit_logger.search_logs(action_type=action_type)[-limit:]
+        else:
+            logs = audit_logger.get_recent_actions(limit)
+        
+        return jsonify({'logs': logs}), 200
+    except Exception as e:
+        print(f"Error fetching audit logs: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+
+@app.route('/api/admin/fraud-detection', methods=['GET'])
+def fraud_detection():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    user = get_user_by_id(user_id)
+    if not is_admin(user):
+        return jsonify({'error': 'Forbidden'}), 403
+    
+    try:
+        all_logs = audit_logger.get_recent_actions(1000)
+        suspicious_activities = []
+        
+        user_action_counts = {}
+        user_recent_actions = {}
+        
+        for log in all_logs:
+            log_user_id = log.get('user_id')
+            action_type = log.get('action_type')
+            timestamp = log.get('timestamp')
+            
+            if not log_user_id:
+                continue
+            
+            if log_user_id not in user_action_counts:
+                user_action_counts[log_user_id] = {}
+                user_recent_actions[log_user_id] = []
+            
+            if action_type not in user_action_counts[log_user_id]:
+                user_action_counts[log_user_id][action_type] = 0
+            
+            user_action_counts[log_user_id][action_type] += 1
+            user_recent_actions[log_user_id].append({
+                'action': action_type,
+                'timestamp': timestamp
+            })
+        
+        for uid, actions in user_action_counts.items():
+            if actions.get('PROJECT_DELETE', 0) > 5:
+                suspicious_activities.append({
+                    'user_id': uid,
+                    'user_name': get_user_by_id(uid).get('name') if get_user_by_id(uid) else 'Unknown',
+                    'type': 'EXCESSIVE_DELETIONS',
+                    'count': actions['PROJECT_DELETE'],
+                    'severity': 'HIGH',
+                    'description': f'User deleted {actions["PROJECT_DELETE"]} projects'
+                })
+            
+            if actions.get('PROJECT_CREATE', 0) > 10:
+                suspicious_activities.append({
+                    'user_id': uid,
+                    'user_name': get_user_by_id(uid).get('name') if get_user_by_id(uid) else 'Unknown',
+                    'type': 'EXCESSIVE_CREATIONS',
+                    'count': actions['PROJECT_CREATE'],
+                    'severity': 'MEDIUM',
+                    'description': f'User created {actions["PROJECT_CREATE"]} projects'
+                })
+            
+            recent = user_recent_actions[uid][-20:]
+            if len(recent) >= 10:
+                timestamps = [datetime.fromisoformat(a['timestamp']) for a in recent[-10:]]
+                if len(timestamps) > 1:
+                    time_span = (timestamps[-1] - timestamps[0]).total_seconds()
+                    if time_span < 60:
+                        suspicious_activities.append({
+                            'user_id': uid,
+                            'user_name': get_user_by_id(uid).get('name') if get_user_by_id(uid) else 'Unknown',
+                            'type': 'RAPID_ACTIONS',
+                            'severity': 'MEDIUM',
+                            'description': f'10 actions in {time_span:.1f} seconds'
+                        })
+        
+        for log in all_logs:
+            if log.get('action_type') == 'ADMIN_AWARD_TILES':
+                tiles_awarded = log.get('details', {}).get('tiles_awarded', 0)
+                if tiles_awarded > 1000:
+                    suspicious_activities.append({
+                        'user_id': log.get('user_id'),
+                        'user_name': log.get('user_name'),
+                        'type': 'LARGE_TILE_AWARD',
+                        'severity': 'HIGH',
+                        'description': f'Awarded {tiles_awarded} tiles to {log.get("details", {}).get("recipient_name")}',
+                        'timestamp': log.get('timestamp')
+                    })
+        
+        return jsonify({
+            'suspicious_activities': suspicious_activities,
+            'total_logs_analyzed': len(all_logs)
+        }), 200
+        
+    except Exception as e:
+        print(f"Error in fraud detection: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+
+@app.route('/api/admin/user-activity/<user_id>', methods=['GET'])
+def get_user_activity_summary(user_id):
+    admin_id = session.get('user_id')
+    if not admin_id:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    admin = get_user_by_id(admin_id)
+    if not is_admin(admin):
+        return jsonify({'error': 'Forbidden'}), 403
+    
+    try:
+        logs = audit_logger.get_user_actions(user_id, limit=500)
+        
+        action_summary = {}
+        for log in logs:
+            action = log.get('action_type')
+            if action not in action_summary:
+                action_summary[action] = 0
+            action_summary[action] += 1
+        
+        first_activity = logs[0].get('timestamp') if logs else None
+        last_activity = logs[-1].get('timestamp') if logs else None
+        
+        return jsonify({
+            'user_id': user_id,
+            'total_actions': len(logs),
+            'action_summary': action_summary,
+            'first_activity': first_activity,
+            'last_activity': last_activity,
+            'recent_logs': logs[-20:] 
+        }), 200
+        
+    except Exception as e:
+        print(f"Error getting user activity: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+
 
 @app.route('/api/delete-project/<project_id>', methods=['DELETE'])
 def delete_project(project_id):
@@ -409,6 +587,19 @@ def delete_project(project_id):
         return jsonify({'error': 'Only draft projects can be deleted'}), 403
     
     try:
+        audit_logger.log_action(
+            action_type=ActionTypes.PROJECT_DELETE,
+            user_id=user_id,
+            user_name=user.get('name'),
+            details={
+                'project_id': project_id,
+                'project_name': project.get('name'),
+                'project_status': project.get('status'),
+                'was_admin_delete': is_admin(user),
+                'approved_hours': project.get('approved_hours', 0)
+            }
+        )
+        
         comments_ref = db.collection('project_comments').where('project_id', '==', project_id).stream()
         for comment in comments_ref:
             comment.reference.delete()
@@ -461,6 +652,18 @@ def add_project_api():
     project_ref = db.collection('projects').document()
     project_ref.set(project_data)
     
+    audit_logger.log_action(
+        action_type=ActionTypes.PROJECT_CREATE,
+        user_id=user_id,
+        user_name=user.get('name'),
+        details={
+            'project_id': project_ref.id,
+            'project_name': name,
+            'hackatime_project': hackatime_project,
+            'detail': detail
+        }
+    )
+    
     return jsonify({
         'id': project_ref.id,
         'name': name,
@@ -475,6 +678,7 @@ def submit_project(project_id):
     if not user_id:
         return jsonify({'error': 'Unauthorized'}), 401
     
+    user = get_user_by_id(user_id)
     project_ref = db.collection('projects').document(project_id)
     project = project_ref.get()
     
@@ -499,6 +703,19 @@ def submit_project(project_id):
             update_data['assigned_admin_id'] = main_admin['id']
     
     project_ref.update(update_data)
+    
+    audit_logger.log_action(
+        action_type=ActionTypes.PROJECT_SUBMIT,
+        user_id=user_id,
+        user_name=user.get('name'),
+        details={
+            'project_id': project_id,
+            'project_name': project.to_dict().get('name'),
+            'github_url': data.get('github_url'),
+            'demo_url': data.get('demo_url'),
+            'languages': data.get('languages')
+        }
+    )
     
     return jsonify({'message': 'Project submitted for review'}), 200
 
@@ -597,19 +814,51 @@ def admin_review_project(project_id):
         return jsonify({'error': 'Forbidden'}), 403
     
     project_ref = db.collection('projects').document(project_id)
-    if not project_ref.get().exists:
+    project_doc = project_ref.get()
+    
+    if not project_doc.exists:
         return jsonify({'error': 'Project not found'}), 404
     
+    project_data = project_doc.to_dict()
     data = request.get_json()
     
+    old_status = project_data.get('status')
+    new_status = data.get('status')
+    old_hours = project_data.get('approved_hours', 0)
+    new_hours = float(data.get('approved_hours', 0))
+    
     update_data = {
-        'status': data.get('status'),
-        'approved_hours': float(data.get('approved_hours', 0)),
+        'status': new_status,
+        'approved_hours': new_hours,
         'reviewed_at': datetime.now(timezone.utc),
         'theme': data.get('theme')
     }
     
     project_ref.update(update_data)
+    
+    action_type = ActionTypes.ADMIN_REVIEW_PROJECT
+    if new_status == 'approved':
+        action_type = ActionTypes.ADMIN_APPROVE_PROJECT
+    elif new_status == 'rejected':
+        action_type = ActionTypes.ADMIN_REJECT_PROJECT
+    
+    audit_logger.log_action(
+        action_type=action_type,
+        user_id=user_id,
+        user_name=user.get('name'),
+        target_user_id=project_data.get('user_id'),
+        details={
+            'project_id': project_id,
+            'project_name': project_data.get('name'),
+            'old_status': old_status,
+            'new_status': new_status,
+            'old_hours': old_hours,
+            'new_hours': new_hours,
+            'theme': data.get('theme'),
+            'hours_changed': new_hours != old_hours
+        }
+    )
+    
     return jsonify({'message': 'Project review updated'}), 200
 
 @app.route('/admin/api/comment-project/<project_id>', methods=['POST'])
@@ -623,9 +872,12 @@ def admin_comment_project(project_id):
         return jsonify({'error': 'Forbidden'}), 403
     
     project_ref = db.collection('projects').document(project_id)
-    if not project_ref.get().exists:
+    project_doc = project_ref.get()
+    
+    if not project_doc.exists:
         return jsonify({'error': 'Project not found'}), 404
     
+    project_data = project_doc.to_dict()
     data = request.get_json()
     comment_text = data.get('comment')
     if not comment_text:
@@ -639,6 +891,20 @@ def admin_comment_project(project_id):
     }
     
     db.collection('project_comments').add(comment_data)
+    
+    audit_logger.log_action(
+        action_type=ActionTypes.ADMIN_COMMENT_PROJECT,
+        user_id=user_id,
+        user_name=user.get('name'),
+        target_user_id=project_data.get('user_id'),
+        details={
+            'project_id': project_id,
+            'project_name': project_data.get('name'),
+            'comment_length': len(comment_text),
+            'comment_preview': comment_text[:100]
+        }
+    )
+    
     return jsonify({'message': 'Comment added'}), 201
 
 @app.route('/admin/api/assign-project/<project_id>', methods=['POST'])
@@ -657,6 +923,8 @@ def admin_assign_project(project_id):
     
     project_ref.update({'assigned_admin_id': user_id})
     return jsonify({'message': 'Project assigned successfully'}), 200
+
+
 @app.route('/api/project-hours', methods=['GET'])
 def get_project_hours():
     user_id = session.get('user_id')
@@ -726,14 +994,14 @@ def leaderboard():
     
     return render_template('leaderboard.html', leaderboard=users_data, user=user)
 
-@app.route('/shop')
+@app.route('/market')
 def shop():
     user_id = session.get('user_id')
     if not user_id:
         return redirect('/signin')
     
     user = get_user_by_id(user_id)
-    return render_template('shop.html', user=user)
+    return render_template('soon.html', user=user)
 
 @app.route('/admin/api/award-tiles/<project_id>', methods=['POST'])
 def admin_award_tiles(project_id):
@@ -767,6 +1035,21 @@ def admin_award_tiles(project_id):
     
     project_user_ref.update({'tiles_balance': new_balance})
     
+    audit_logger.log_action(
+        action_type=ActionTypes.ADMIN_AWARD_TILES,
+        user_id=user_id,
+        user_name=user.get('name'),
+        target_user_id=project_user_id,
+        details={
+            'project_id': project_id,
+            'project_name': project.get('name'),
+            'tiles_awarded': tiles_amount,
+            'old_balance': current_balance,
+            'new_balance': new_balance,
+            'recipient_name': project_user.get('name')
+        }
+    )
+    
     return jsonify({
         'message': 'Tiles awarded successfully',
         'new_balance': new_balance
@@ -798,6 +1081,17 @@ def admin_add_theme():
     
     theme_ref = db.collection('themes').document()
     theme_ref.set(theme_data)
+    
+    audit_logger.log_action(
+        action_type=ActionTypes.ADMIN_CREATE_THEME,
+        user_id=user_id,
+        user_name=user.get('name'),
+        details={
+            'theme_id': theme_ref.id,
+            'theme_name': theme_name,
+            'theme_description': theme_description
+        }
+    )
     
     return jsonify({
         'message': 'Theme added successfully',
@@ -835,11 +1129,27 @@ def admin_delete_theme(theme_id):
         return jsonify({'error': 'Forbidden'}), 403
     
     theme_ref = db.collection('themes').document(theme_id)
-    if not theme_ref.get().exists:
+    theme_doc = theme_ref.get()
+    
+    if not theme_doc.exists:
         return jsonify({'error': 'Theme not found'}), 404
     
+    theme_data = theme_doc.to_dict()
     theme_ref.update({'is_active': False})
+    
+    audit_logger.log_action(
+        action_type=ActionTypes.ADMIN_DELETE_THEME,
+        user_id=user_id,
+        user_name=user.get('name'),
+        details={
+            'theme_id': theme_id,
+            'theme_name': theme_data.get('name')
+        }
+    )
+    
     return jsonify({'message': 'Theme deleted successfully'}), 200
+
+
 @app.route('/api/health')
 def health():
     return "OK", 200

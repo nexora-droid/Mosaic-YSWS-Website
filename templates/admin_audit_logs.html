@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Logs - Mosaic Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_dashboard.css')}}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            overflow: hidden;
+        }
+        
+        .audit-container {
+            padding: 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+            height: calc(100vh - 49px);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .audit-container::-webkit-scrollbar {
+            width: 10px;
+        }
+        
+        .audit-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .audit-container::-webkit-scrollbar-thumb {
+            background: #235789;
+            border-radius: 10px;
+        }
+        
+        .audit-container::-webkit-scrollbar-thumb:hover {
+            background: #1a4567;
+        }
+        
+        .audit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-shrink: 0;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .filter-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+        }
+        
+        .filter-group select,
+        .filter-group input {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .alert-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+        
+        .alert-box.danger {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+        
+        .alert-box h3 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        
+        .suspicious-item {
+            background: white;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .suspicious-item.high {
+            border-left-color: #dc3545;
+        }
+        
+        .log-table {
+            background: white;
+            border-radius: 12px;
+            overflow-y: auto;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            min-height: 400px;
+        }
+        
+        .log-table::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .log-table::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .log-table::-webkit-scrollbar-thumb {
+            background: #235789;
+            border-radius: 10px;
+        }
+        
+        .log-table::-webkit-scrollbar-thumb:hover {
+            background: #1a4567;
+        }
+        
+        .log-entry {
+            border-bottom: 1px solid #eee;
+            padding: 15px 20px;
+            transition: background 0.2s;
+        }
+        
+        .log-entry:hover {
+            background: #f8f9fa;
+        }
+        
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 8px;
+        }
+        
+        .log-action {
+            font-weight: 600;
+            color: #235789;
+            font-size: 14px;
+        }
+        
+        .log-timestamp {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .log-user {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .log-details {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-info { background: #d1ecf1; color: #0c5460; }
+        
+        @media (max-width: 600px) {
+            #navbar {
+                flex-wrap: wrap;
+            }
+            
+            .nav-tab {
+                flex: 1 1 50%;
+                padding: 12px 10px;
+                font-size: 14px;
+            }
+            
+            .audit-container {
+                height: calc(100vh - 98px);
+                padding: 15px;
+            }
+            
+            .audit-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
+            
+            .audit-header button {
+                width: 100%;
+            }
+            
+            .filters {
+                flex-direction: column;
+            }
+            
+            .filter-group {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav id="navbar">
+        <div class="nav-tab" onclick="window.location.href='/dashboard'">
+            The Studio
+        </div>
+        <div class="nav-tab" onclick="window.location.href='/leaderboard'">
+            Leaderboard
+        </div>
+        <div class="nav-tab" onclick="window.location.href='/market'">
+            <i class="fas fa-lock"></i> Market
+        </div>
+        <div class="nav-tab" onclick="window.location.href='/admin/dashboard'">
+            Admin Dashboard
+        </div>
+        <div class="nav-tab active">
+            Audit Logs
+        </div>
+    </nav>
+
+    <div class="audit-container">
+        <div class="audit-header">
+            <div>
+                <h1 style="margin: 0 0 10px 0; font-family: 'Space Grotesk', sans-serif; font-size: 32px;">Audit Logs</h1>
+                <p style="color: #666; margin: 0;">Monitor all system activities for security and fraud detection</p>
+            </div>
+            <button onclick="refreshLogs()" style="padding: 10px 20px; background: #235789; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+
+        <div id="fraud-alerts"></div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label>Action Type</label>
+                <select id="action-filter" onchange="applyFilters()">
+                    <option value="">All Actions</option>
+                    <option value="USER_LOGIN">User Login</option>
+                    <option value="PROJECT_CREATE">Project Create</option>
+                    <option value="PROJECT_DELETE">Project Delete</option>
+                    <option value="PROJECT_SUBMIT">Project Submit</option>
+                    <option value="ADMIN_REVIEW_PROJECT">Admin Review</option>
+                    <option value="ADMIN_APPROVE_PROJECT">Admin Approve</option>
+                    <option value="ADMIN_REJECT_PROJECT">Admin Reject</option>
+                    <option value="ADMIN_AWARD_TILES">Award Tiles</option>
+                    <option value="ADMIN_CREATE_THEME">Create Theme</option>
+                    <option value="ADMIN_DELETE_THEME">Delete Theme</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Limit</label>
+                <select id="limit-filter" onchange="applyFilters()">
+                    <option value="50">50 entries</option>
+                    <option value="100" selected>100 entries</option>
+                    <option value="200">200 entries</option>
+                    <option value="500">500 entries</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="log-table" id="logs-container">
+            <div style="text-align: center; padding: 60px;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 50px; color: #235789;"></i>
+                <p style="margin-top: 15px; color: #666;">Loading audit logs...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{url_for('static', filename='js/alert_modal.js')}}"></script>
+    <script>
+        let allLogs = [];
+
+        async function loadLogs() {
+            const limit = document.getElementById('limit-filter').value;
+            const actionType = document.getElementById('action-filter').value;
+            
+            const params = new URLSearchParams({ limit });
+            if (actionType) params.append('action_type', actionType);
+            
+            try {
+                const response = await fetch(`/api/admin/audit-logs?${params}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    allLogs = data.logs;
+                    renderLogs(allLogs);
+                } else {
+                    document.getElementById('logs-container').innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: #dc3545;">
+                            <i class="fas fa-exclamation-circle" style="font-size: 50px;"></i>
+                            <p style="margin-top: 15px;">Error loading logs</p>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.error('Error loading logs:', e);
+            }
+        }
+
+        async function loadFraudAlerts() {
+            try {
+                const response = await fetch('/api/admin/fraud-detection');
+                const data = await response.json();
+                
+                if (response.ok && data.suspicious_activities.length > 0) {
+                    const alertsHtml = `
+                        <div class="alert-box danger">
+                            <h3><i class="fas fa-exclamation-triangle"></i> Suspicious Activities Detected (${data.suspicious_activities.length})</h3>
+                            ${data.suspicious_activities.map(activity => `
+                                <div class="suspicious-item ${activity.severity.toLowerCase()}">
+                                    <strong>${activity.user_name}</strong> - ${activity.description}
+                                    <span class="badge badge-${activity.severity === 'HIGH' ? 'danger' : 'warning'}">${activity.severity}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    document.getElementById('fraud-alerts').innerHTML = alertsHtml;
+                }
+            } catch (e) {
+                console.error('Error loading fraud alerts:', e);
+            }
+        }
+
+        function renderLogs(logs) {
+            const container = document.getElementById('logs-container');
+            
+            if (logs.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 60px; color: #999;">
+                        <i class="fas fa-inbox" style="font-size: 50px;"></i>
+                        <p style="margin-top: 15px;">No logs found</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const logsHtml = logs.reverse().map(log => {
+                const timestamp = new Date(log.timestamp).toLocaleString();
+                const detailsJson = JSON.stringify(log.details, null, 2);
+                
+                return `
+                    <div class="log-entry">
+                        <div class="log-header">
+                            <span class="log-action">
+                                ${getActionIcon(log.action_type)} ${log.action_type}
+                            </span>
+                            <span class="log-timestamp">${timestamp}</span>
+                        </div>
+                        <div class="log-user">
+                            <i class="fas fa-user"></i> ${log.user_name || 'Unknown'} (${log.user_id || 'N/A'})
+                            ${log.ip_address ? `<span style="margin-left: 10px;"><i class="fas fa-network-wired"></i> ${log.ip_address}</span>` : ''}
+                        </div>
+                        ${Object.keys(log.details).length > 0 ? `
+                            <div class="log-details">
+                                <strong>Details:</strong>
+                                <pre style="margin: 5px 0 0 0; font-size: 11px;">${detailsJson}</pre>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = logsHtml;
+        }
+
+        function getActionIcon(actionType) {
+            const icons = {
+                'USER_LOGIN': '<i class="fas fa-sign-in-alt"></i>',
+                'PROJECT_CREATE': '<i class="fas fa-plus-circle"></i>',
+                'PROJECT_DELETE': '<i class="fas fa-trash"></i>',
+                'PROJECT_SUBMIT': '<i class="fas fa-paper-plane"></i>',
+                'ADMIN_REVIEW_PROJECT': '<i class="fas fa-eye"></i>',
+                'ADMIN_APPROVE_PROJECT': '<i class="fas fa-check-circle"></i>',
+                'ADMIN_REJECT_PROJECT': '<i class="fas fa-times-circle"></i>',
+                'ADMIN_AWARD_TILES': '<i class="fas fa-gift"></i>',
+                'ADMIN_CREATE_THEME': '<i class="fas fa-palette"></i>',
+                'ADMIN_DELETE_THEME': '<i class="fas fa-trash-alt"></i>',
+            };
+            return icons[actionType] || '<i class="fas fa-circle"></i>';
+        }
+
+        function applyFilters() {
+            loadLogs();
+        }
+
+        function refreshLogs() {
+            loadLogs();
+            loadFraudAlerts();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLogs();
+            loadFraudAlerts();
+
+            setInterval(() => {
+                loadLogs();
+                loadFraudAlerts();
+            }, 30000);
+        });
+    </script>
+</body>
+</html>

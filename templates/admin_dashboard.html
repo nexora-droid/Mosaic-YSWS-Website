@@ -5,22 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Mosaic</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_dashboard.css')}}">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <div id="navbar">
-        <div id="part1">
-            <p class="nav-part {% if current_page == 'dashboard' %}current{% endif %}" onclick="window.location.href='/dashboard'">My Projects</p>
-            <p class="nav-part {% if current_page == 'leaderboard' %}current{% endif %}" onclick="window.location.href='/leaderboard'">Leaderboard</p>
-            <p class="nav-part {% if current_page == 'shop' %}current{% endif %}" onclick="window.location.href='/shop'">Shop</p>
-            {% if user and is_admin(user) %}
-            <p class="nav-part admin-link {% if current_page == 'admin' %}current{% endif %}" onclick="window.location.href='/admin/dashboard'">Admin Panel</p>
-            {% endif %}
-        </div> 
-        <div id="part2">
-            <p>MOSAIC</p>
+    <nav id="navbar">
+        <div class="nav-tab" onclick="window.location.href='/dashboard'">
+            The Studio
         </div>
-    </div>
+        <div class="nav-tab" onclick="window.location.href='/leaderboard'">
+            Leaderboard
+        </div>
+        <div class="nav-tab" onclick="window.location.href='/market'">
+            <i class="fas fa-lock"></i> Market
+        </div>
+        <div class="nav-tab active">
+            Admin Dashboard
+        </div>
+        <div class="nav-tab wip">
+            Orpheus
+        </div>
+    </nav>
+
     <div class="admin-layout">
         <div class="users-sidebar">
             <h2><i class="fas fa-users"></i> All Users</h2>
@@ -35,13 +40,13 @@
             </div>
             <div id="projects-list" class="projects-list">
                 <div class="empty-message">
-                    <i class="fas fa-user-search" style="font-size: 80px; color: var(--medium-jungle); margin-bottom: 15px;"></i>
+                    <i class="fas fa-user-search" style="font-size: 80px; color: var(--blue-accent); margin-bottom: 15px;"></i>
                     <p>Select a user from the left sidebar</p>
                 </div>
             </div>
         </div>
 
-        <!-- hemes & Stats -->
+        <!-- Themes & Stats -->
         <div class="themes-sidebar">
             <div class="sidebar-section">
                 <h2>

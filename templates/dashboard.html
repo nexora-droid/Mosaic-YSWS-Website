@@ -6,122 +6,92 @@
     <title>{% block title %}Mosaic Dashboard {% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css')}}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add" />
 </head>
 <body>
-
-    <!--Nav Bar-->
-    <div id="navbar">
-        <div id="part1">
-            <p class="nav-part {% if current_page == 'dashboard' %}current{% endif %}" onclick="window.location.href='/dashboard'">My Projects</p>
-            <p class="nav-part {% if current_page == 'leaderboard' %}current{% endif %}" onclick="window.location.href='/leaderboard'">Leaderboard</p>
-            <p class="nav-part {% if current_page == 'shop' %}current{% endif %}" onclick="window.location.href='/shop'">Shop</p>
-            {% if user and is_admin(user) %}
-            <p class="nav-part admin-link {% if current_page == 'admin' %}current{% endif %}" onclick="window.location.href='/admin/dashboard'">Admin Panel</p>
-            {% endif %}
-        </div> 
-        <div id="part2">
-            <p>MOSAIC</p>
+    <nav id="navbar">
+        <div class="nav-tab active">
+            The Studio
         </div>
-    </div>
-    <!--<div id="decor">
-        <img src="https://hc-cdn.hel1.your-objectstorage.com/s/v3/6744b79e66c6963e94189a886b7bfe544e75135f_websitedecor_2_.png" id="img2">
-    </div>-->
-    <!-- Dashboard Container -->
+        <div class="nav-tab" onclick="window.location.href='/leaderboard'">
+            Leaderboard
+        </div>
+        <div class="nav-tab" onclick="window.location.href='/market'">
+            <i class="fas fa-lock"></i> Market
+        </div>
+        {% if user and is_admin(user) %}
+        <div class="nav-tab" onclick="window.location.href='/admin/dashboard'">
+            Admin Dashboard
+        </div>
+        {% endif %}
+        <div class="nav-tab wip">
+            Orpheus
+        </div>
+    </nav>
+
     <div id="dashboard-container">
-        <div id="left-panel">
-            <div class="connection-card {% if not auto_connected %}connection-error{% else %}connection-success{% endif %}">
-                <div class="connection-icon">
-                    {% if not auto_connected %}
-                    <i class="fas fa-exclamation-triangle"></i>
-                    {% else %}
-                    <i class="fas fa-check-circle"></i>
-                    {% endif %}
-                </div>
-                <div class="connection-content">
-                    {% if not auto_connected %}
-                    <h3>Hackatime Auto-connect Failed!</h3>
-                    <p>Message @the space man on slack for help</p>
-                    {% else %}
-                    <h3>Connected to Hackatime</h3>
-                    <p>Your hours are being tracked automatically</p>
-                    {% endif %}
-                </div>
+        <div id="left-side">
+            <div class="section-header">
+                <h2>Your Projects</h2>
+                <button id="add-project-btn" class="add-btn">
+                    +
+                </button>
             </div>
-
-            <!-- Themes Card -->
-            <div class="themes-card">
-                <div class="themes-card-header">
-                    <h3>Active Themes</h3>
-                </div>
-                <div id="themes-list-content" class="themes-list-content">
-                    <div class="themes-loading">
-                        <i class="fas fa-spinner fa-spin"></i> Loading themes...
+            
+            <div id="projects-list">
+                {% for sp in saved_projects %}
+                <div class="project-card" 
+                     data-project-id="{{sp.id}}" 
+                     data-hackatime-project="{{sp.hackatime_project}}"
+                     onclick="selectProject('{{sp.id}}')">
+                    <div class="project-name">
+                        {{sp.name}}
                     </div>
-                </div>
-            </div>
-
-            <div id="project-section">
-                <div class="project-header">
-                    <h2>Your Projects</h2>
-                    <button id="add-project-btn" class="icon-btn">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                </div>
-
-                <div id="projects-grid">
-                    {% for sp in saved_projects %}
-                    <div class="project-card" data-project-id="{{sp.id}}" data-hackatime-project="{{sp.hackatime_project}}">
-                        <div class="project-card-header">
-                            <h3>{{sp.name}}</h3>
-                            <span class="status-badge status-{{ sp.status }}">{{ sp.status.replace('_', ' ').title()}}</span>
-                        </div>
-                        <p class="project-description">{{ sp.detail or 'No Description'}}</p>
-                        {% if sp.theme %}
-                        <span class="theme-tag">{{ sp.theme }}</span>
+                    <div class="project-status status-{{ sp.status }}">
+                        {% if sp.status == 'approved' %}Sold
+                        {% elif sp.status == 'rejected' %}Refunded
+                        {% elif sp.status == 'draft' %}Building
+                        {% else %}{{ sp.status }}
                         {% endif %}
-                        <div class="project-card-footer">
-                            <div class="hours-display">Fetching hours...</div>
-                            <button class="view-details-btn">View Details</button>
-                        </div>
                     </div>
-                    {% endfor %}
                 </div>
+                {% endfor %}
             </div>
         </div>
 
-        <div id="right-panel">
-            <div id="stats">
-                <h2>Your Statistics</h2>
-                <div class="stat-card">
-                    <div class="stat-content">
-                        <h3>Total Hours (all of Hackatime)</h3>
-                        <p class="stat-value">{{ stats.total_hours }}</p>
-                    </div>
+        <div id="right-side">
+            <div id="empty-state" {% if saved_projects %}style="display: none;"{% endif %}>
+                <p class="empty-message">No Tile-work selected...</p>
+            </div>
+            
+            <div id="project-info" {% if not saved_projects %}style="display: none;"{% endif %}>
+            </div>
+            
+            <div id="bottom-info">
+                <div class="info-card tiles-balance">
+                    Current Balance: {{ user.tiles_balance if user.tiles_balance else 0 }} Tiles
                 </div>
-                <div class="stat-card">
-                    <div class="stat-content">
-                        <h3>Projects Completed</h3>
-                        <p class="stat-value">{{ stats.completed_projects }}</p>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-content">
-                        <h3>Projects In Review</h3>
-                        <p class="stat-value">{{ stats.in_review_projects }}</p>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-content">
-                        <h3>Tiles Balance</h3>
-                        <p class="stat-value">{{ user.tiles_balance if user.tiles_balance else 0}}</p>
-                    </div>
+                <div class="info-card current-theme">
+                    Current Theme: <span id="theme-name">Loading...</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Add Project Overlay -->
+    {% if not auto_connected %}
+    <div id="hackatime-warning" onclick="showHackatimePopup()">
+        ⚠
+    </div>
+    {% endif %}
+
+    <div id="hackatime-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeHackatimePopup()">&times;</span>
+            <h3>Hackatime Not Connected</h3>
+            <p>Your Hackatime is not tracking properly. Please message <strong>@the space man</strong> on Slack for help.</p>
+            <button onclick="closeHackatimePopup()" class="btn-primary">Got it</button>
+        </div>
+    </div>
+
     <div id="overlay" class="overlay hidden">
         <div class="overlay-content">
             <h2>Add Project</h2>
@@ -155,20 +125,6 @@
         </div>
     </div>
 
-    <!-- Project Details Overlay -->
-    <div id="project-details-overlay" class="overlay hidden">
-       <div class="overlay-content large">
-            <button class="close-btn" id="close-details">&times;</button>
-            <div id="project-details-content">
-                <div style="text-align: center; padding: 60px;">
-                    <i class="fas fa-spinner fa-spin" style="font-size: 60px; color: var(--pine-green);"></i>
-                    <p style="margin-top: 20px; font-size: 18px; color: #666;">Loading project details...</p>
-                </div>
-            </div>
-       </div>
-    </div>
-    
-    <!-- Submit Project Overlay -->
     <div id="submit-overlay" class="overlay hidden">
         <div class="overlay-content">
             <h2>Submit Project for Review</h2>

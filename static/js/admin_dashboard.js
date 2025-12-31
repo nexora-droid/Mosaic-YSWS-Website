@@ -11,7 +11,7 @@ async function loadAllUsers() {
     const usersList = document.getElementById('users-list');
     usersList.innerHTML = `
         <div style="text-align: center; padding: 40px;">
-            <i class="fas fa-spinner fa-spin" style="font-size: 40px; color: var(--pine-green);"></i>
+            <i class="fas fa-spinner fa-spin" style="font-size: 40px; color: var(--blue-accent);"></i>
             <p style="margin-top: 15px; color: #666;">Loading users...</p>
         </div>
     `;
@@ -23,7 +23,7 @@ async function loadAllUsers() {
         if (!response.ok) {
             console.error('Error loading users:', data.error);
             usersList.innerHTML = `
-                <div style="text-align: center; padding: 20px; color: var(--punch-red);">
+                <div style="text-align: center; padding: 20px; color: #D32F2F;">
                     <i class="fas fa-exclamation-circle" style="font-size: 40px;"></i>
                     <p style="margin-top: 10px;">Error loading users</p>
                 </div>
@@ -57,7 +57,7 @@ async function loadAllUsers() {
     } catch (e) {
         console.error('Error loading users:', e);
         usersList.innerHTML = `
-            <div style="text-align: center; padding: 20px; color: var(--punch-red);">
+            <div style="text-align: center; padding: 20px; color: #D32F2F;">
                 <i class="fas fa-exclamation-circle" style="font-size: 40px;"></i>
                 <p style="margin-top: 10px;">Network error</p>
             </div>
@@ -79,7 +79,7 @@ async function loadUserProjects(userId) {
     const projectsList = document.getElementById('projects-list');
     projectsList.innerHTML = `
         <div class="empty-message">
-            <i class="fas fa-spinner fa-spin" style="font-size: 50px; color: var(--pine-green);"></i>
+            <i class="fas fa-spinner fa-spin" style="font-size: 50px; color: var(--blue-accent);"></i>
             <p style="margin-top: 15px;">Loading projects...</p>
         </div>
     `;
@@ -92,7 +92,7 @@ async function loadUserProjects(userId) {
             await showAlert('Error loading user projects', 'error');
             projectsList.innerHTML = `
                 <div class="empty-message">
-                    <i class="fas fa-exclamation-circle" style="font-size: 80px; color: var(--punch-red);"></i>
+                    <i class="fas fa-exclamation-circle" style="font-size: 80px; color: #D32F2F;"></i>
                     <p>Error loading projects</p>
                 </div>
             `;
@@ -110,11 +110,18 @@ async function loadUserProjects(userId) {
                     }
                 }
                 
+                const statusDisplay = {
+                    'draft': 'BUILDING',
+                    'in_review': 'IN REVIEW',
+                    'approved': 'APPROVED',
+                    'rejected': 'REJECTED'
+                };
+                
                 return `
                 <div class="project-card-admin" onclick="viewProject('${project.id}')">
                     <div class="project-card-header">
                         <h3>${project.name}</h3>
-                        <span class="status-badge status-${project.status}">${project.status.replace('_', ' ').toUpperCase()}</span>
+                        <span class="status-badge status-${project.status}">${statusDisplay[project.status] || project.status.toUpperCase()}</span>
                     </div>
                     <p class="project-description">${project.detail || 'No description'}</p>
                     ${project.theme ? `<span class="theme-tag">${project.theme}</span>` : ''}
@@ -133,7 +140,7 @@ async function loadUserProjects(userId) {
         } else {
             projectsList.innerHTML = `
                 <div class="empty-message">
-                    <i class="fas fa-folder-open" style="font-size: 80px; color: var(--medium-jungle); margin-bottom: 15px;"></i>
+                    <i class="fas fa-folder-open" style="font-size: 80px; color: var(--blue-accent); margin-bottom: 15px;"></i>
                     <p>No projects yet</p>
                 </div>
             `;
@@ -143,12 +150,13 @@ async function loadUserProjects(userId) {
         await showAlert('Network error loading projects', 'error');
         projectsList.innerHTML = `
             <div class="empty-message">
-                <i class="fas fa-exclamation-circle" style="font-size: 80px; color: var(--punch-red);"></i>
+                <i class="fas fa-exclamation-circle" style="font-size: 80px; color: #D32F2F;"></i>
                 <p>Network error</p>
             </div>
         `;
     }
 }
+
 async function refreshAfterAction() {
     await Promise.all([
         loadAllUsers(),
@@ -158,6 +166,7 @@ async function refreshAfterAction() {
         await loadUserProjects(selectedUserId);
     }
 }
+
 async function loadThemes() {
     const themesList = document.getElementById('themes-list');
     
@@ -182,7 +191,7 @@ async function loadThemes() {
         }
     } catch (e) {
         console.error('Error loading themes:', e);
-        themesList.innerHTML = '<p style="text-align: center; color: var(--punch-red);">Error loading themes</p>';
+        themesList.innerHTML = '<p style="text-align: center; color: #D32F2F;">Error loading themes</p>';
     }
 }
 
@@ -212,7 +221,7 @@ async function viewProject(projectId) {
     const reviewContent = document.getElementById('review-content');
     reviewContent.innerHTML = `
         <div style="text-align: center; padding: 60px;">
-            <i class="fas fa-spinner fa-spin" style="font-size: 60px; color: var(--pine-green);"></i>
+            <i class="fas fa-spinner fa-spin" style="font-size: 60px; color: var(--blue-accent);"></i>
             <p style="margin-top: 20px; font-size: 18px; color: #666;">Loading project details...</p>
         </div>
     `;
@@ -298,6 +307,7 @@ async function viewProject(projectId) {
                 <div class="form-group">
                     <label for="status-${projectId}">Status</label>
                     <select id="status-${projectId}" required>
+                        <option value="draft" ${project.status==='draft' ? 'selected': ''}>Draft / Building</option>
                         <option value="in_review" ${project.status==='in_review' ? 'selected': ''}>In Review</option>
                         <option value="approved" ${project.status === 'approved' ? 'selected': ''}>Approved</option>
                         <option value="rejected" ${project.status === 'rejected' ? 'selected': ''}>Rejected</option>
@@ -330,6 +340,7 @@ async function viewProject(projectId) {
         console.error(e);
     }
 }
+
 async function submitReview(event, projectId) {
     event.preventDefault();
     const approvedHours = document.getElementById(`approved-hours-${projectId}`).value;
@@ -397,6 +408,7 @@ async function submitReview(event, projectId) {
         console.error(e);
     }
 }
+
 async function awardTiles(projectId) {
     const tilesAmount = document.getElementById(`tiles-${projectId}`).value;
     if (!tilesAmount || tilesAmount <= 0){
@@ -425,6 +437,7 @@ async function awardTiles(projectId) {
         console.error(e);
     }
 }
+
 async function quickReject(projectId) {
     const comment = prompt('Please provide a reason for rejection:');
     if (!comment) return;
@@ -459,13 +472,16 @@ async function quickReject(projectId) {
         console.error(e);
     }  
 }
+
 function openThemeModal(){
     document.getElementById('theme-modal').classList.remove('hidden');
 }
+
 function closeThemeModal(){
     document.getElementById('theme-modal').classList.add('hidden');
     document.getElementById('theme-form').reset();
 }
+
 async function submitTheme(event){
     event.preventDefault();
     const name = document.getElementById('theme-name').value;
@@ -523,4 +539,3 @@ document.getElementById('theme-modal')?.addEventListener('click', (e)=>{
     }
 });
 
- 
