@@ -364,10 +364,6 @@ def get_user_projects(user_id):
         
         for proj in projects_ref:
             proj_data = proj.to_dict()
-            # Skip draft projects
-            if proj_data.get('status') == 'draft':
-                continue
-                
             proj_data['id'] = proj.id
             if 'created_at' in proj_data:
                 proj_data['created_at'] = serialize_timestamp(proj_data['created_at'])
