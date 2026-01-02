@@ -16,6 +16,7 @@ app.secret_key = os.getenv("SECRET_KEY")
 cred = credentials.Certificate(os.getenv("FIREBASE_CREDENTIALS_PATH", "firebase-credentials.json"))
 firebase_admin.initialize_app(cred)
 db = firestore.client()
+logger = audit_logger(db)
 
 HACKATIME_API_KEY = os.getenv("HACKATIME_API_KEY")
 HACKATIME_BASE_URL = "https://hackatime.hackclub.com/api/v1"
@@ -184,7 +185,7 @@ def hackclub_callback():
             user = get_user_by_id(user_id)
         
         session['user_id'] = user_id
-        audit_logger.log_action(
+        logger.log_action(
             action_type=ActionTypes.USER_LOGIN,
             user_id=user_id,
             user_name=user.get('name'),
@@ -419,11 +420,11 @@ def get_audit_logs():
     
     try:
         if filter_user_id:
-            logs = audit_logger.get_user_actions(filter_user_id, limit)
+            logs = logger.get_user_actions(filter_user_id, limit)
         elif action_type:
-            logs = audit_logger.search_logs(action_type=action_type)[-limit:]
+            logs = logger.search_logs(action_type=action_type)[-limit:]
         else:
-            logs = audit_logger.get_recent_actions(limit)
+            logs = logger.get_recent_actions(limit)
         
         return jsonify({'logs': logs}), 200
     except Exception as e:
@@ -441,7 +442,7 @@ def fraud_detection():
         return jsonify({'error': 'Forbidden'}), 403
     
     try:
-        all_logs = audit_logger.get_recent_actions(1000)
+        all_logs = logger.get_recent_actions(1000)
         suspicious_activities = []
         
         user_action_counts = {}
@@ -536,7 +537,7 @@ def get_user_activity_summary(user_id):
         return jsonify({'error': 'Forbidden'}), 403
     
     try:
-        logs = audit_logger.get_user_actions(user_id, limit=500)
+        logs = logger.get_user_actions(user_id, limit=500)
         
         action_summary = {}
         for log in logs:
@@ -587,7 +588,7 @@ def delete_project(project_id):
         return jsonify({'error': 'Only draft projects can be deleted'}), 403
     
     try:
-        audit_logger.log_action(
+        logger.log_action(
             action_type=ActionTypes.PROJECT_DELETE,
             user_id=user_id,
             user_name=user.get('name'),
@@ -652,7 +653,7 @@ def add_project_api():
     project_ref = db.collection('projects').document()
     project_ref.set(project_data)
     
-    audit_logger.log_action(
+    logger.log_action(
         action_type=ActionTypes.PROJECT_CREATE,
         user_id=user_id,
         user_name=user.get('name'),
@@ -704,7 +705,7 @@ def submit_project(project_id):
     
     project_ref.update(update_data)
     
-    audit_logger.log_action(
+    logger.log_action(
         action_type=ActionTypes.PROJECT_SUBMIT,
         user_id=user_id,
         user_name=user.get('name'),
@@ -842,7 +843,7 @@ def admin_review_project(project_id):
     elif new_status == 'rejected':
         action_type = ActionTypes.ADMIN_REJECT_PROJECT
     
-    audit_logger.log_action(
+    logger.log_action(
         action_type=action_type,
         user_id=user_id,
         user_name=user.get('name'),
@@ -892,7 +893,7 @@ def admin_comment_project(project_id):
     
     db.collection('project_comments').add(comment_data)
     
-    audit_logger.log_action(
+    logger.log_action(
         action_type=ActionTypes.ADMIN_COMMENT_PROJECT,
         user_id=user_id,
         user_name=user.get('name'),
@@ -1035,7 +1036,7 @@ def admin_award_tiles(project_id):
     
     project_user_ref.update({'tiles_balance': new_balance})
     
-    audit_logger.log_action(
+    logger.log_action(
         action_type=ActionTypes.ADMIN_AWARD_TILES,
         user_id=user_id,
         user_name=user.get('name'),
@@ -1082,7 +1083,7 @@ def admin_add_theme():
     theme_ref = db.collection('themes').document()
     theme_ref.set(theme_data)
     
-    audit_logger.log_action(
+    logger.log_action(
         action_type=ActionTypes.ADMIN_CREATE_THEME,
         user_id=user_id,
         user_name=user.get('name'),
@@ -1137,7 +1138,7 @@ def admin_delete_theme(theme_id):
     theme_data = theme_doc.to_dict()
     theme_ref.update({'is_active': False})
     
-    audit_logger.log_action(
+    logger.log_action(
         action_type=ActionTypes.ADMIN_DELETE_THEME,
         user_id=user_id,
         user_name=user.get('name'),

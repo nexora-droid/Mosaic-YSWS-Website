@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+ <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audit Logs - Mosaic Admin</title>
@@ -168,11 +168,25 @@
         
         .log-details {
             background: #f8f9fa;
-            padding: 10px;
+            padding: 10px 12px;
             border-radius: 6px;
-            font-size: 12px;
-            color: #666;
+            font-size: 13px;
+            color: #555;
             margin-top: 8px;
+            line-height: 1.6;
+        }
+        
+        .detail-item {
+            margin-bottom: 4px;
+        }
+        
+        .detail-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #235789;
         }
         
         .badge {
@@ -224,8 +238,8 @@
             }
         }
     </style>
-</head>
-<body>
+ </head>
+ <body>
     <nav id="navbar">
         <div class="nav-tab" onclick="window.location.href='/dashboard'">
             The Studio
@@ -349,6 +363,75 @@
             }
         }
 
+        function formatDetails(details, actionType) {
+            if (!details || Object.keys(details).length === 0) return '';
+            
+            let formattedDetails = [];
+            switch(actionType) {
+                case 'USER_LOGIN':
+                    if (details.email) formattedDetails.push(`Email: ${details.email}`);
+                    if (details.slack_id) formattedDetails.push(`Slack ID: ${details.slack_id}`);
+                    if (details.is_new_user) formattedDetails.push(`New User: Yes`);
+                    if (details.verification_status) formattedDetails.push(`Verified: ${details.verification_status}`);
+                    break;
+                    
+                case 'PROJECT_CREATE':
+                case 'PROJECT_SUBMIT':
+                case 'PROJECT_DELETE':
+                    if (details.project_name) formattedDetails.push(`Project: ${details.project_name}`);
+                    if (details.hackatime_project) formattedDetails.push(`Hackatime Project: ${details.hackatime_project}`);
+                    if (details.github_url) formattedDetails.push(`GitHub: ${details.github_url}`);
+                    if (details.demo_url) formattedDetails.push(`Demo: ${details.demo_url}`);
+                    if (details.languages) formattedDetails.push(`Languages: ${details.languages}`);
+                    if (details.project_status) formattedDetails.push(`Status: ${details.project_status}`);
+                    if (details.was_admin_delete) formattedDetails.push(`Admin Delete: Yes`);
+                    break;
+                    
+                case 'ADMIN_REVIEW_PROJECT':
+                case 'ADMIN_APPROVE_PROJECT':
+                case 'ADMIN_REJECT_PROJECT':
+                    if (details.project_name) formattedDetails.push(`Project: ${details.project_name}`);
+                    if (details.old_status && details.new_status) {
+                        formattedDetails.push(`Status: ${details.old_status} → ${details.new_status}`);
+                    }
+                    if (details.new_hours !== undefined) {
+                        formattedDetails.push(`Hours Approved: ${details.new_hours}`);
+                    }
+                    if (details.theme) formattedDetails.push(`Theme: ${details.theme}`);
+                    break;
+                    
+                case 'ADMIN_AWARD_TILES':
+                    if (details.project_name) formattedDetails.push(`Project: ${details.project_name}`);
+                    if (details.recipient_name) formattedDetails.push(`Recipient: ${details.recipient_name}`);
+                    if (details.tiles_awarded) formattedDetails.push(`Tiles Awarded: ${details.tiles_awarded}`);
+                    if (details.old_balance !== undefined && details.new_balance !== undefined) {
+                        formattedDetails.push(`Balance: ${details.old_balance} → ${details.new_balance}`);
+                    }
+                    break;
+                    
+                case 'ADMIN_CREATE_THEME':
+                case 'ADMIN_DELETE_THEME':
+                    if (details.theme_name) formattedDetails.push(`Theme: ${details.theme_name}`);
+                    if (details.theme_description) formattedDetails.push(`Description: ${details.theme_description}`);
+                    break;
+                    
+                case 'ADMIN_COMMENT_PROJECT':
+                    if (details.project_name) formattedDetails.push(`Project: ${details.project_name}`);
+                    if (details.comment_preview) formattedDetails.push(`Comment: ${details.comment_preview}`);
+                    break;
+                    
+                default:
+                    for (const [key, value] of Object.entries(details)) {
+                        if (value !== null && value !== undefined) {
+                            const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                            formattedDetails.push(`${label}: ${value}`);
+                        }
+                    }
+            }
+            
+            return formattedDetails;
+        }
+
         function renderLogs(logs) {
             const container = document.getElementById('logs-container');
             
@@ -364,24 +447,24 @@
             
             const logsHtml = logs.reverse().map(log => {
                 const timestamp = new Date(log.timestamp).toLocaleString();
-                const detailsJson = JSON.stringify(log.details, null, 2);
+                const formattedDetails = formatDetails(log.details, log.action_type);
                 
                 return `
                     <div class="log-entry">
                         <div class="log-header">
                             <span class="log-action">
-                                ${getActionIcon(log.action_type)} ${log.action_type}
+                                ${getActionIcon(log.action_type)} ${log.action_type.replace(/_/g, ' ')}
                             </span>
                             <span class="log-timestamp">${timestamp}</span>
                         </div>
                         <div class="log-user">
-                            <i class="fas fa-user"></i> ${log.user_name || 'Unknown'} (${log.user_id || 'N/A'})
-                            ${log.ip_address ? `<span style="margin-left: 10px;"><i class="fas fa-network-wired"></i> ${log.ip_address}</span>` : ''}
+                            <i class="fas fa-user"></i> ${log.user_name || 'Unknown User'}
                         </div>
-                        ${Object.keys(log.details).length > 0 ? `
+                        ${formattedDetails.length > 0 ? `
                             <div class="log-details">
-                                <strong>Details:</strong>
-                                <pre style="margin: 5px 0 0 0; font-size: 11px;">${detailsJson}</pre>
+                                ${formattedDetails.map(detail => `
+                                    <div class="detail-item">${detail}</div>
+                                `).join('')}
                             </div>
                         ` : ''}
                     </div>
@@ -403,6 +486,7 @@
                 'ADMIN_AWARD_TILES': '<i class="fas fa-gift"></i>',
                 'ADMIN_CREATE_THEME': '<i class="fas fa-palette"></i>',
                 'ADMIN_DELETE_THEME': '<i class="fas fa-trash-alt"></i>',
+                'ADMIN_COMMENT_PROJECT': '<i class="fas fa-comment"></i>',
             };
             return icons[actionType] || '<i class="fas fa-circle"></i>';
         }
@@ -426,5 +510,5 @@
             }, 30000);
         });
     </script>
-</body>
+ </body>
 </html>

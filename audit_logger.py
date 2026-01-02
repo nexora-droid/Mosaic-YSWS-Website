@@ -1,20 +1,14 @@
-import json
-import os
 from datetime import datetime, timezone
-from functools import wraps
 from flask import request, session
+from firebase_admin import firestore
 
-class AuditLogger:
-    def __init__(self, log_file='logs/audit_log.json'):
-        self.log_file = log_file
-        os.makedirs(os.path.dirname(log_file), exist_ok=True)
-        if not os.path.exists(log_file):
-            with open(log_file, 'w') as f:
-                json.dump([], f)
+class audit_logger:
+    def __init__(self, db):
+        self.db = db
     
     def log_action(self, action_type, user_id=None, user_name=None, details=None, target_user_id=None):
         log_entry = {
-            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'timestamp': datetime.now(timezone.utc),
             'action_type': action_type,
             'user_id': user_id,
             'user_name': user_name,
@@ -26,58 +20,70 @@ class AuditLogger:
         }
         
         try:
-            with open(self.log_file, 'r') as f:
-                logs = json.load(f)
-            logs.append(log_entry)
-            with open(self.log_file, 'w') as f:
-                json.dump(logs, f, indent=2)
-                
+            self.db.collection('audit_logs').add(log_entry)
             print(f"[AUDIT LOG] {action_type} by {user_name or user_id}")
-            
         except Exception as e:
             print(f"Error writing to audit log: {e}")
     
     def get_user_actions(self, user_id, limit=100):
         try:
-            with open(self.log_file, 'r') as f:
-                logs = json.load(f)
+            logs_ref = (self.db.collection('audit_logs')
+                       .where('user_id', '==', user_id)
+                       .order_by('timestamp', direction=firestore.Query.DESCENDING)
+                       .limit(limit))
             
-            user_logs = [log for log in logs if log.get('user_id') == user_id]
-            return user_logs[-limit:] 
+            logs = []
+            for log in logs_ref.stream():
+                log_data = log.to_dict()
+                log_data['timestamp'] = log_data['timestamp'].isoformat()
+                logs.append(log_data)
+            
+            return logs
         except Exception as e:
             print(f"Error reading audit log: {e}")
             return []
     
     def get_recent_actions(self, limit=100):
         try:
-            with open(self.log_file, 'r') as f:
-                logs = json.load(f)
+            logs_ref = (self.db.collection('audit_logs')
+                       .order_by('timestamp', direction=firestore.Query.DESCENDING)
+                       .limit(limit))
             
-            return logs[-limit:] 
+            logs = []
+            for log in logs_ref.stream():
+                log_data = log.to_dict()
+                log_data['timestamp'] = log_data['timestamp'].isoformat()
+                logs.append(log_data)
+            
+            return logs
         except Exception as e:
             print(f"Error reading audit log: {e}")
             return []
     
     def search_logs(self, action_type=None, user_id=None, start_date=None, end_date=None):
         try:
-            with open(self.log_file, 'r') as f:
-                logs = json.load(f)
-            
-            filtered_logs = logs
-            
+            logs_ref = self.db.collection('audit_logs')
             if action_type:
-                filtered_logs = [log for log in filtered_logs if log.get('action_type') == action_type]
+                logs_ref = logs_ref.where('action_type', '==', action_type)
             
             if user_id:
-                filtered_logs = [log for log in filtered_logs if log.get('user_id') == user_id]
+                logs_ref = logs_ref.where('user_id', '==', user_id)
+            logs_ref = logs_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(500)
             
-            if start_date:
-                filtered_logs = [log for log in filtered_logs if log.get('timestamp') >= start_date]
+            logs = []
+            for log in logs_ref.stream():
+                log_data = log.to_dict()
+                timestamp = log_data['timestamp'].isoformat()
+                
+                if start_date and timestamp < start_date:
+                    continue
+                if end_date and timestamp > end_date:
+                    continue
+                
+                log_data['timestamp'] = timestamp
+                logs.append(log_data)
             
-            if end_date:
-                filtered_logs = [log for log in filtered_logs if log.get('timestamp') <= end_date]
-            
-            return filtered_logs
+            return logs
         except Exception as e:
             print(f"Error searching audit log: {e}")
             return []
@@ -102,4 +108,3 @@ class ActionTypes:
     SUSPICIOUS_MULTIPLE_DELETES = 'SUSPICIOUS_MULTIPLE_DELETES'
     SUSPICIOUS_TILE_REQUEST = 'SUSPICIOUS_TILE_REQUEST'
 
-audit_logger = AuditLogger()
