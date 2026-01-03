@@ -1,11 +1,13 @@
 // Load users on page load
+let selectedUserId = null;
+let allUsers = [];
+let currentFilter = 'all';
+
 document.addEventListener('DOMContentLoaded', async () => {
     await loadAllUsers();
     await loadThemes();
     await loadStats();
 });
-
-let selectedUserId = null;
 
 async function loadAllUsers() {
     const usersList = document.getElementById('users-list');
@@ -17,7 +19,7 @@ async function loadAllUsers() {
     `;
     
     try {
-        const response = await fetch('/api/all-users');
+        const response = await fetch(`/api/all-users?filter=${currentFilter}`);
         const data = await response.json();
         
         if (!response.ok) {
@@ -31,29 +33,9 @@ async function loadAllUsers() {
             return;
         }
         
-        if (data.users && data.users.length > 0) {
-            usersList.innerHTML = data.users.map(user => `
-                <div class="user-item" data-user-id="${user.id}" onclick="selectUser('${user.id}')">
-                    <h4>${user.name || 'Unknown User'}</h4>
-                    <div class="user-stats-mini">
-                        <span class="stat-mini">
-                            <i class="fas fa-clock"></i>
-                            ${user.total_hours.toFixed(2)} hrs
-                        </span>
-                        <span class="stat-mini">
-                            <i class="fas fa-folder"></i>
-                            ${user.projects_count}
-                        </span>
-                        <span class="stat-mini">
-                            <i class="fas fa-dice"></i>
-                            ${user.tiles_balance}
-                        </span>
-                    </div>
-                </div>
-            `).join('');
-        } else {
-            usersList.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No users found</p>';
-        }
+        allUsers = data.users || [];
+        renderUsers(allUsers);
+        
     } catch (e) {
         console.error('Error loading users:', e);
         usersList.innerHTML = `
@@ -63,6 +45,71 @@ async function loadAllUsers() {
             </div>
         `;
     }
+}
+function renderUsers(users){
+    const usersList = document.getElementById('users-list');
+    
+    if (users.length === 0) {
+        usersList.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No users found</p>';
+        return;
+    }
+    
+    usersList.innerHTML = users.map(user => `
+        <div class="user-item" data-user-id="${user.id}" data-user-name="${(user.name || '').toLowerCase()}" onclick="selectUser('${user.id}')">
+            <div class="user-header">
+                <h4>${user.name || 'Unknown User'}</h4>
+                ${user.draft_count > 0 ? '<span class="draft-badge"><i class="fas fa-file"></i></span>' : ''}
+            </div>
+            <div class="user-stats-mini">
+                <span class="stat-mini" title="Total Projects">
+                    <i class="fas fa-folder"></i>
+                    ${user.total_projects}
+                </span>
+                ${user.draft_count > 0 ? `
+                <span class="stat-mini draft" title="Draft Projects">
+                    <i class="fas fa-file-alt"></i>
+                    ${user.draft_count}
+                </span>
+                ` : ''}
+                ${user.in_review_count > 0 ? `
+                <span class="stat-mini review" title="In Review">
+                    <i class="fas fa-clock"></i>
+                    ${user.in_review_count}
+                </span>
+                ` : ''}
+                ${user.approved_count > 0 ? `
+                <span class="stat-mini approved" title="Approved">
+                    <i class="fas fa-check-circle"></i>
+                    ${user.approved_count}
+                </span>
+                ` : ''}
+            </div>
+            <div class="user-meta">
+                <span><i class="fas fa-clock"></i> ${user.total_hours.toFixed(2)} hrs</span>
+                <span><i class="fas fa-dice"></i> ${user.tiles_balance} tiles</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function filterUsers() {
+    const searchTerm = document.getElementById('user-search').value.toLowerCase();
+    
+    const filteredUsers = allUsers.filter(user => {
+        const userName = (user.name || '').toLowerCase();
+        return userName.includes(searchTerm);
+    });
+    
+    renderUsers(filteredUsers);
+}
+
+async function applyFilter(filter) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+    await loadAllUsers();
 }
 
 async function selectUser(userId) {
@@ -100,43 +147,56 @@ async function loadUserProjects(userId) {
         }
         
         if (data.projects && data.projects.length > 0) {
-            projectsList.innerHTML = data.projects.map(project => {
-                let submittedDate = '';
-                if (project.submitted_at) {
-                    try {
-                        submittedDate = new Date(project.submitted_at).toLocaleDateString();
-                    } catch (e) {
-                        submittedDate = 'N/A';
-                    }
-                }
-                
-                const statusDisplay = {
-                    'draft': 'BUILDING',
-                    'in_review': 'IN REVIEW',
-                    'approved': 'APPROVED',
-                    'rejected': 'REJECTED'
-                };
-                
-                return `
-                <div class="project-card-admin" onclick="viewProject('${project.id}')">
-                    <div class="project-card-header">
-                        <h3>${project.name}</h3>
-                        <span class="status-badge status-${project.status}">${statusDisplay[project.status] || project.status.toUpperCase()}</span>
+            const draftProjects = data.projects.filter(p => p.status === 'draft');
+            const inReviewProjects = data.projects.filter(p => p.status === 'in_review');
+            const approvedProjects = data.projects.filter(p => p.status === 'approved');
+            const rejectedProjects = data.projects.filter(p => p.status === 'rejected');
+            
+            let html = '';
+            
+            if (draftProjects.length > 0) {
+                html += `
+                    <div class="project-section">
+                        <h3 class="section-title">
+                            <i class="fas fa-file-alt"></i> Draft Projects (${draftProjects.length})
+                        </h3>
+                        ${renderProjectCards(draftProjects)}
                     </div>
-                    <p class="project-description">${project.detail || 'No description'}</p>
-                    ${project.theme ? `<span class="theme-tag">${project.theme}</span>` : ''}
-                    <div class="project-meta-info">
-                        <span><i class="fas fa-clock"></i> ${project.approved_hours || 0} hrs</span>
-                        ${submittedDate ? `<span><i class="fas fa-calendar"></i> ${submittedDate}</span>` : ''}
-                    </div>
-                    <div class="project-actions">
-                        <button class="btn-review" onclick="event.stopPropagation(); viewProject('${project.id}')">
-                            <i class="fas fa-eye"></i> Review
-                        </button>
-                    </div>
-                </div>
                 `;
-            }).join('');
+            }
+            if (inReviewProjects.length > 0) {
+                html += `
+                    <div class="project-section">
+                        <h3 class="section-title">
+                            <i class="fas fa-clock"></i> In Review (${inReviewProjects.length})
+                        </h3>
+                        ${renderProjectCards(inReviewProjects)}
+                    </div>
+                `;
+            }
+            
+            if (approvedProjects.length > 0) {
+                html += `
+                    <div class="project-section">
+                        <h3 class="section-title">
+                            <i class="fas fa-check-circle"></i> Approved (${approvedProjects.length})
+                        </h3>
+                        ${renderProjectCards(approvedProjects)}
+                    </div>
+                `;
+            }
+            if (rejectedProjects.length > 0) {
+                html += `
+                    <div class="project-section">
+                        <h3 class="section-title">
+                            <i class="fas fa-times-circle"></i> Rejected (${rejectedProjects.length})
+                        </h3>
+                        ${renderProjectCards(rejectedProjects)}
+                    </div>
+                `;
+            }
+            
+            projectsList.innerHTML = html;
         } else {
             projectsList.innerHTML = `
                 <div class="empty-message">
@@ -155,6 +215,44 @@ async function loadUserProjects(userId) {
             </div>
         `;
     }
+}
+function renderProjectCards(projects) {
+    const statusDisplay = {
+        'draft': 'BUILDING',
+        'in_review': 'IN REVIEW',
+        'approved': 'APPROVED',
+        'rejected': 'REJECTED'
+    };
+    
+    return projects.map(project => {
+        let submittedDate = '';
+        if (project.submitted_at) {
+            try {
+                submittedDate = new Date(project.submitted_at).toLocaleDateString();
+            } catch (e) {
+                submittedDate = 'N/A';
+            }
+        }
+        return `
+        <div class="project-card-admin" onclick="viewProject('${project.id}')">
+            <div class="project-card-header">
+                <h3>${project.name}</h3>
+                <span class="status-badge status-${project.status}">${statusDisplay[project.status] || project.status.toUpperCase()}</span>
+            </div>
+            <p class="project-description">${project.detail || 'No description'}</p>
+            ${project.theme ? `<span class="theme-tag">${project.theme}</span>` : ''}
+            <div class="project-meta-info">
+                <span><i class="fas fa-clock"></i> ${project.approved_hours || 0} hrs</span>
+                ${submittedDate ? `<span><i class="fas fa-calendar"></i> ${submittedDate}</span>` : ''}
+            </div>
+            <div class="project-actions">
+                <button class="btn-review" onclick="event.stopPropagation(); viewProject('${project.id}')">
+                    <i class="fas fa-eye"></i> Review
+                </button>
+            </div>
+        </div>
+        `;
+    }).join('');
 }
 
 async function refreshAfterAction() {
@@ -197,23 +295,35 @@ async function loadThemes() {
 
 async function loadStats() {
     try {
-        document.getElementById('stat-pending').textContent = '...';
-        document.getElementById('stat-approved').textContent = '...';
+        const statIds = ['stat-total-users', 'stat-total-projects', 'stat-draft', 'stat-pending', 'stat-approved', 'stat-total-hours', 'stat-raw-hours', 'stat-total-tiles'];
+        statIds.forEach(id => {
+            document.getElementById(id).textContent = '...';
+        });
+        
         const response = await fetch('/api/admin-stats');
         const data = await response.json();
         
         if (response.ok) {
+            document.getElementById('stat-total-users').textContent = data.total_users || 0;
+            document.getElementById('stat-total-projects').textContent = data.total_projects || 0;
+            document.getElementById('stat-draft').textContent = data.draft_projects || 0;
             document.getElementById('stat-pending').textContent = data.pending_reviews || 0;
             document.getElementById('stat-approved').textContent = data.approved_projects || 0;
+            document.getElementById('stat-total-hours').textContent = data.total_hours || 0;
+            document.getElementById('stat-raw-hours').textContent = data.raw_hours || 0;
+            document.getElementById('stat-total-tiles').textContent = data.total_tiles_awarded || 0;
         } else {
             console.error('Error loading stats:', data.error);
-            document.getElementById('stat-pending').textContent = '-';
-            document.getElementById('stat-approved').textContent = '-';
+            statIds.forEach(id => {
+                document.getElementById(id).textContent = '-';
+            });
         }
     } catch (e) {
         console.error('Error loading stats:', e);
-        document.getElementById('stat-pending').textContent = '-';
-        document.getElementById('stat-approved').textContent = '-';
+        const statIds = ['stat-total-users', 'stat-total-projects', 'stat-draft', 'stat-pending', 'stat-approved', 'stat-total-hours', 'stat-raw-hours', 'stat-total-tiles'];
+        statIds.forEach(id => {
+            document.getElementById(id).textContent = '-';
+        });
     }
 }
 
@@ -230,7 +340,8 @@ async function viewProject(projectId) {
     try {
         const response = await fetch(`/api/project-details/${projectId}`);
         const project = await response.json();
-        if (!response.ok){
+        
+        if (!response.ok) {
             await showAlert('Error loading project details', 'error');
             document.getElementById('review-modal').classList.add('hidden');
             return;
@@ -251,7 +362,7 @@ async function viewProject(projectId) {
                     <div class="info-label">Raw Hours (Hackatime)</div>
                     <div class="info-value">${project.raw_hours}</div>
                 </div>
-                ${project.languages ?`
+                ${project.languages ? `
                     <div class="info-item">
                         <div class="info-label">Languages</div>
                         <div class="info-value">${project.languages}</div>
@@ -260,18 +371,19 @@ async function viewProject(projectId) {
             </div>
             <p><strong>Description:</strong> ${project.detail || 'No Description'}</p>
         </div>
-        ${project.summary ?`
+        ${project.summary ? `
             <div class="review-section">
                 <h3>Project Summary</h3>
                 <p>${project.summary}</p>
             </div>
-            ` : ''}
+        ` : ''}
         
         ${project.screenshot_url ? `
             <div class="review-section">
                 <h3>Screenshot</h3>
                 <img src="${project.screenshot_url}" alt="Project Screenshot" class="project-screenshot">
-            </div>` : ''}
+            </div>
+        ` : ''}
             
         ${project.github_url || project.demo_url ? `
             <div class="review-section">
@@ -280,7 +392,8 @@ async function viewProject(projectId) {
                     ${project.github_url ? `<li><a href="${project.github_url}" target="_blank"><i class="fab fa-github"></i> Github Repository</a></li>` : ''}
                     ${project.demo_url ? `<li><a href="${project.demo_url}" target="_blank"><i class="fas fa-external-link-alt"></i> Live Demo</a></li>` : ''}
                 </ul>
-            </div> ` : ''}
+            </div>
+        ` : ''}
         
         ${project.comments && project.comments.length > 0 ? `
             <div class="review-section">
@@ -289,9 +402,9 @@ async function viewProject(projectId) {
                     <div class="info-item" style="margin-bottom: 10px;">
                        <div class="info-label">${comment.admin_name} - ${new Date(comment.created_at).toLocaleString()}</div>
                         <div class="info-value">${comment.comment}</div>
-                    </div>`
-                    ).join('')}
-             </div>
+                    </div>
+                `).join('')}
+            </div>
         ` : ''}
         <div class="review-form">
             <h3>Review Project</h3>
@@ -307,10 +420,10 @@ async function viewProject(projectId) {
                 <div class="form-group">
                     <label for="status-${projectId}">Status</label>
                     <select id="status-${projectId}" required>
-                        <option value="draft" ${project.status==='draft' ? 'selected': ''}>Draft / Building</option>
-                        <option value="in_review" ${project.status==='in_review' ? 'selected': ''}>In Review</option>
-                        <option value="approved" ${project.status === 'approved' ? 'selected': ''}>Approved</option>
-                        <option value="rejected" ${project.status === 'rejected' ? 'selected': ''}>Rejected</option>
+                        <option value="draft" ${project.status === 'draft' ? 'selected' : ''}>Draft / Building</option>
+                        <option value="in_review" ${project.status === 'in_review' ? 'selected' : ''}>In Review</option>
+                        <option value="approved" ${project.status === 'approved' ? 'selected' : ''}>Approved</option>
+                        <option value="rejected" ${project.status === 'rejected' ? 'selected' : ''}>Rejected</option>
                     </select>
                 </div>
                 
@@ -360,18 +473,18 @@ async function submitReview(event, projectId) {
             })
         });
         
-        if (!reviewResponse.ok){
+        if (!reviewResponse.ok) {
             await showAlert('Error updating project review!', 'error');
             return;
         }
         
-        if (comment.trim()){
+        if (comment.trim()) {
             const commentResponse = await fetch(`/admin/api/comment-project/${projectId}`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({comment: comment})
             });
-            if (!commentResponse.ok){
+            if (!commentResponse.ok) {
                 console.error('Error adding comment');
             }
         }
@@ -387,11 +500,7 @@ async function submitReview(event, projectId) {
                 console.error('Error awarding tiles');
                 await showAlert('Review saved but error awarding tiles!', 'warning');
                 closeReviewModal();
-                await loadAllUsers();
-                if (selectedUserId) {
-                    await loadUserProjects(selectedUserId);
-                }
-                await loadStats();
+                await refreshAfterAction();
                 return;
             }
         }
@@ -399,10 +508,6 @@ async function submitReview(event, projectId) {
         await showAlert('Review saved successfully!', 'success');
         closeReviewModal();
         await refreshAfterAction();
-        if (selectedUserId) {
-            await loadUserProjects(selectedUserId);
-        }
-        await loadStats();
     } catch (e) {
         await showAlert('Error submitting review', 'error');
         console.error(e);
@@ -411,7 +516,7 @@ async function submitReview(event, projectId) {
 
 async function awardTiles(projectId) {
     const tilesAmount = document.getElementById(`tiles-${projectId}`).value;
-    if (!tilesAmount || tilesAmount <= 0){
+    if (!tilesAmount || tilesAmount <= 0) {
         await showAlert('Please enter a valid tiles amount', 'warning');
         return;
     }
@@ -425,7 +530,7 @@ async function awardTiles(projectId) {
             body: JSON.stringify({tiles: parseInt(tilesAmount)})
         });
 
-        if (response.ok){
+        if (response.ok) {
             const data = await response.json();
             await showAlert(`Tiles awarded! New Balance: ${data.new_balance}`, 'success');
             document.getElementById(`tiles-${projectId}`).value = 0;
@@ -451,22 +556,18 @@ async function quickReject(projectId) {
                 approved_hours: 0
             })
         });
-        if (!reviewResponse.ok){
+        if (!reviewResponse.ok) {
             await showAlert('Error rejecting project!', 'error');
             return;
         }
         await fetch(`/admin/api/comment-project/${projectId}`, {
             method: 'POST',
-            headers: {'Content-Type' : 'application/json'},
+            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({'comment': comment})
         });
         await showAlert('Project rejected successfully', 'success');
         closeReviewModal();
         await refreshAfterAction();
-        if (selectedUserId) {
-            await loadUserProjects(selectedUserId);
-        }
-        await loadStats();
     } catch (e) {
         await showAlert('Error rejecting project', 'error');
         console.error(e);
@@ -477,12 +578,12 @@ function openThemeModal(){
     document.getElementById('theme-modal').classList.remove('hidden');
 }
 
-function closeThemeModal(){
+function closeThemeModal() {
     document.getElementById('theme-modal').classList.add('hidden');
     document.getElementById('theme-form').reset();
 }
 
-async function submitTheme(event){
+async function submitTheme(event) {
     event.preventDefault();
     const name = document.getElementById('theme-name').value;
     const description = document.getElementById('theme-description').value;
@@ -492,14 +593,14 @@ async function submitTheme(event){
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({name, description})
         });
-        if (response.ok){
+        if (response.ok) {
             await showAlert('Theme added successfully!', 'success');
             closeThemeModal();
             await loadThemes();
         } else {
             await showAlert('Error adding theme!', 'error');
         }
-    } catch(e){
+    } catch(e) {
         await showAlert('Network error adding theme!', 'error');
         console.error(e);
     }
@@ -513,28 +614,28 @@ async function deleteTheme(themeId) {
         const response = await fetch(`/admin/api/delete-theme/${themeId}`, {
             method: 'DELETE'
         });
-        if (response.ok){
+        if (response.ok) {
             await showAlert('Theme deleted successfully!', 'success');
             await loadThemes();
         } else {
             await showAlert('Error deleting theme', 'error');
         }
-    } catch (e){
+    } catch (e) {
         await showAlert('Network error deleting theme', 'error');
         console.error(e);
     }
 }
-function closeReviewModal(){
+function closeReviewModal() {
     document.getElementById('review-modal').classList.add('hidden');
 }
-document.getElementById('review-modal')?.addEventListener('click', (e)=>{
-    if (e.target.id === 'review-modal'){
+document.getElementById('review-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'review-modal') {
         closeReviewModal();
     }
 });
 
-document.getElementById('theme-modal')?.addEventListener('click', (e)=>{
-    if (e.target.id === 'theme-modal'){
+document.getElementById('theme-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'theme-modal') {
         closeThemeModal();
     }
 });
