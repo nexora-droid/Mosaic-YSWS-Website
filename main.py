@@ -370,6 +370,7 @@ def get_user_stats(user):
 @admin_required
 def get_all_users():
     try:
+        filter_type = request.args.get('filter', 'all')
         users_list = []
         all_users = db.collection('users').stream()
         
@@ -377,21 +378,29 @@ def get_all_users():
             u_data = u.to_dict()
             u_data['id'] = u.id
             all_projects_query = db.collection('projects').where('user_id', '==', u.id).stream()
-            all_projects = [p for p in all_projects_query if p.to_dict().get('status') != 'draft']
+            all_projects = list(all_projects_query)
             
-            projects_count = len(all_projects)
-            # Get approved projects count
+            draft_count = sum(1 for p in all_projects if p.to_dict().get('status') == 'draft')
+            in_review_count = sum(1 for p in all_projects if p.to_dict().get('status') == 'in_review')
             approved_count = sum(1 for p in all_projects if p.to_dict().get('status') == 'approved')
-            # Calculate total hours from approved projects
+            rejected_count = sum(1 for p in all_projects if p.to_dict().get('status') == 'rejected')
+            
             total_hours = sum(p.to_dict().get('approved_hours', 0) for p in all_projects if p.to_dict().get('status') == 'approved')
             
+            if filter_type == 'with_draft' and draft_count == 0:
+                continue
+            elif filter_type == 'with_completed' and (in_review_count == 0 and approved_count == 0):
+                continue
             users_list.append({
                 'id': u_data['id'],
                 'name': u_data.get('name'),
                 'email': u_data.get('email'),
                 'tiles_balance': u_data.get('tiles_balance', 0),
-                'projects_count': projects_count,
+                'total_projects': len(all_projects),
+                'draft_count': draft_count,
+                'in_review_count': in_review_count,
                 'approved_count': approved_count,
+                'rejected_count': rejected_count,
                 'total_hours': total_hours
             })
         
@@ -405,23 +414,75 @@ def get_all_users():
 @admin_required
 def get_admin_stats():
     try:
-        all_projects = db.collection('projects').stream()
+        all_users = list(db.collection('users').stream())
+        total_users = len(all_users)
         
-        pending_count = 0
+        total_tiles_awarded = 0
+        for user in all_users:
+            user_data = user.to_dict()
+            total_tiles_awarded += user_data.get('tiles_balance', 0)
+        all_projects = list(db.collection('projects').stream())
+        
+        draft_count = 0
+        in_review_count = 0
         approved_count = 0
+        rejected_count = 0
+        total_approved_hours = 0
+        total_raw_hours = 0
+        user_hackatime_cache = {}
         
         for project in all_projects:
             project_data = project.to_dict()
             status = project_data.get('status')
+            approved_hours = project_data.get('approved_hours', 0)
             
-            if status == 'in_review':
-                pending_count += 1
+            if status == 'draft':
+                draft_count += 1
+            elif status == 'in_review':
+                in_review_count += 1
             elif status == 'approved':
                 approved_count += 1
+                total_approved_hours += approved_hours
+            elif status == 'rejected':
+                rejected_count += 1
+            #raw hours calc
+            hackatime_project_name = project_data.get('hackatime_project')
+            if hackatime_project_name:
+                user_id = project_data.get('user_id')
+                if user_id not in user_hackatime_cache:
+                    project_user = get_user_by_id(user_id)
+                    if project_user and project_user.get('slack_id'):
+                        try:
+                            url = f"{HACKATIME_BASE_URL}/users/{project_user['slack_id']}/stats?features=projects"
+                            headers = autoconnectHackatime()
+                            response = requests.get(url, headers=headers, timeout=5)
+                            
+                            if response.status_code == 200:
+                                data = response.json()
+                                user_hackatime_cache[user_id] = data.get("data", {}).get('projects', [])
+                            else:
+                                user_hackatime_cache[user_id] = []
+                        except Exception as e:
+                            print(f"Error fetching Hackatime for user {user_id}: {e}")
+                            user_hackatime_cache[user_id] = []
+                    else:
+                        user_hackatime_cache[user_id] = []
+                for hackatime_proj in user_hackatime_cache.get(user_id, []):
+                    if hackatime_proj.get('name') == hackatime_project_name:
+                        raw_hours = hackatime_proj.get('total_seconds', 0) / 3600
+                        total_raw_hours += raw_hours
+                        break
         
         return jsonify({
-            'pending_reviews': pending_count,
-            'approved_projects': approved_count
+            'total_users': total_users,
+            'total_projects': len(all_projects),
+            'draft_projects': draft_count,
+            'pending_reviews': in_review_count,
+            'approved_projects': approved_count,
+            'rejected_projects': rejected_count,
+            'total_hours': round(total_approved_hours, 2),
+            'raw_hours': round(total_raw_hours, 2),
+            'total_tiles_awarded': total_tiles_awarded
         }), 200
     except Exception as e:
         print(f"Error fetching admin stats: {e}")
