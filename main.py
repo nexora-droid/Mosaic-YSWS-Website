@@ -1,16 +1,80 @@
 import os
 from flask import Flask, request, render_template, redirect, session, jsonify
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import requests
 import firebase_admin
 from firebase_admin import credentials, firestore
 from audit_logger import audit_logger, ActionTypes
 from dotenv import load_dotenv
+from functools import wraps
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
+
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+app.config['SESSION_COOKIE_SECURE'] = True  #change this in render to TRUE and false for local dev
+app.config['SESSION_COOKIE_HTTPONLY'] = True  #no js access
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  #CSRF 
+app.config['SESSION_COOKIE_NAME'] = 'mosaic_session'
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Unauthorized - Login required'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Unauthorized - Login required'}), 401
+        
+        user = get_user_by_id(user_id)
+        if not user or not is_admin(user):
+            logger.log_action(
+                action_type=ActionTypes.UNAUTHORIZED_ADMIN_ACCESS_ATTEMPT,
+                user_id=user_id,
+                user_name=user.get('name') if user else 'Unknown',
+                details={
+                    'endpoint': request.endpoint,
+                    'method': request.method,
+                    'ip': request.remote_addr,
+                    'path': request.path
+                }
+            )
+            return jsonify({'error': 'Forbidden - Admin access required'}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
+    if 'user_id' in session:
+        session.modified = True
+
+#admin rotues api blocked for other users
+@app.before_request
+def protect_admin_routes():
+    if request.path.startswith('/admin') and not request.path.startswith('/admin/api'):
+        user_id = session.get('user_id')
+        if not user_id:
+            return redirect('/signin')
+        user = get_user_by_id(user_id)
+        if not user or not is_admin(user):
+            logger.log_action(
+                action_type=ActionTypes.UNAUTHORIZED_ADMIN_ACCESS_ATTEMPT,
+                user_id=user_id,
+                user_name=user.get('name') if user else 'Unknown',
+                details={'path': request.path, 'method': request.method}
+            )
+            return redirect('/dashboard')
 
 # firestore init
 cred = credentials.Certificate(os.getenv("FIREBASE_CREDENTIALS_PATH", "firebase-credentials.json"))
@@ -46,7 +110,14 @@ def autoconnectHackatime():
     return {"Authorization": f"Bearer {HACKATIME_API_KEY}"}
 
 def is_admin(user):
-    return user and user.get('slack_id') in ADMIN_SLACK_IDS
+    if not user:
+        return False
+    
+    # Must have slack_id in admin list AND role must be Admin
+    slack_id_valid = user.get('slack_id') in ADMIN_SLACK_IDS
+    role_valid = user.get('role') == 'Admin'
+    
+    return slack_id_valid and role_valid
 
 @app.context_processor
 def utility_processor():
@@ -80,6 +151,17 @@ def serialize_timestamp(obj):
     if hasattr(obj, 'seconds'):
         return datetime.fromtimestamp(obj.seconds, tz=timezone.utc).isoformat()
     return obj
+
+def validate_project_name(name):
+    if not name or not name.strip():
+        return False, "Project name cannot be empty"
+    if len(name) > 100:
+        return False, "Project name too long"
+    #no xss
+    dangerous_chars = ['<', '>', '"', "'"]
+    if any(char in name for char in dangerous_chars):
+        return False, "Invalid characters in project name"
+    return True, ""
 
 @app.route("/")
 def main():
@@ -205,12 +287,11 @@ def hackclub_callback():
         return f"Authentication failed: {str(e)}", 500
 
 @app.route('/dashboard')
+@login_required
 def dashboard():
     user_id = session.get('user_id')
-    if not user_id:
-        return redirect("/signin")
-    
     user = get_user_by_id(user_id)
+    
     if not user:
         return redirect("/signin")
     
@@ -286,15 +367,8 @@ def get_user_stats(user):
     return stats
 
 @app.route('/api/all-users', methods=['GET'])
+@admin_required
 def get_all_users():
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    user = get_user_by_id(user_id)
-    if not is_admin(user):
-        return jsonify({'error': 'Forbidden'}), 403
-    
     try:
         users_list = []
         all_users = db.collection('users').stream()
@@ -328,15 +402,8 @@ def get_all_users():
 
 
 @app.route('/api/admin-stats', methods=['GET'])
+@admin_required
 def get_admin_stats():
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    user = get_user_by_id(user_id)
-    if not is_admin(user):
-        return jsonify({'error': 'Forbidden'}), 403
-    
     try:
         all_projects = db.collection('projects').stream()
         
@@ -361,15 +428,8 @@ def get_admin_stats():
         return jsonify({'error': 'Internal Server Error'}), 500
 
 @app.route('/api/user-projects/<user_id>', methods=['GET'])
+@admin_required
 def get_user_projects(user_id):
-    admin_id = session.get('user_id')
-    if not admin_id:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    admin = get_user_by_id(admin_id)
-    if not is_admin(admin):
-        return jsonify({'error': 'Forbidden'}), 403
-    
     try:
         projects = []
         projects_ref = db.collection('projects').where('user_id', '==', user_id).stream()
@@ -393,27 +453,15 @@ def get_user_projects(user_id):
         return jsonify({'error': 'Internal Server Error'}), 500
 
 @app.route('/admin/audit-logs')
+@admin_required
 def admin_audit_logs():
     user_id = session.get('user_id')
-    if not user_id:
-        return redirect("/signin")
-    
     user = get_user_by_id(user_id)
-    if not is_admin(user):
-        return redirect("/dashboard")
-
     return render_template('admin_audit_logs.html', user=user)
 
 @app.route('/api/admin/audit-logs', methods=['GET'])
+@admin_required
 def get_audit_logs():
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    user = get_user_by_id(user_id)
-    if not is_admin(user):
-        return jsonify({'error': 'Forbidden'}), 403
-
     limit = int(request.args.get('limit', 100))
     action_type = request.args.get('action_type')
     filter_user_id = request.args.get('user_id')
@@ -432,15 +480,8 @@ def get_audit_logs():
         return jsonify({'error': 'Internal Server Error'}), 500
 
 @app.route('/api/admin/fraud-detection', methods=['GET'])
+@admin_required
 def fraud_detection():
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    user = get_user_by_id(user_id)
-    if not is_admin(user):
-        return jsonify({'error': 'Forbidden'}), 403
-    
     try:
         all_logs = logger.get_recent_actions(1000)
         suspicious_activities = []
@@ -490,12 +531,16 @@ def fraud_detection():
                     'description': f'User created {actions["PROJECT_CREATE"]} projects'
                 })
             
-            recent = user_recent_actions[uid][-20:]
+            recent = user_recent_actions[uid][-20:]  
             if len(recent) >= 10:
-                timestamps = [datetime.fromisoformat(a['timestamp']) for a in recent[-10:]]
+                timestamps = sorted([
+                    datetime.fromisoformat(a['timestamp']) 
+                    for a in recent[-10:]
+                ])
+                
                 if len(timestamps) > 1:
                     time_span = (timestamps[-1] - timestamps[0]).total_seconds()
-                    if time_span < 60:
+                    if time_span > 0 and time_span < 60:
                         suspicious_activities.append({
                             'user_id': uid,
                             'user_name': get_user_by_id(uid).get('name') if get_user_by_id(uid) else 'Unknown',
@@ -503,7 +548,7 @@ def fraud_detection():
                             'severity': 'MEDIUM',
                             'description': f'10 actions in {time_span:.1f} seconds'
                         })
-        
+
         for log in all_logs:
             if log.get('action_type') == 'ADMIN_AWARD_TILES':
                 tiles_awarded = log.get('details', {}).get('tiles_awarded', 0)
@@ -516,26 +561,39 @@ def fraud_detection():
                         'description': f'Awarded {tiles_awarded} tiles to {log.get("details", {}).get("recipient_name")}',
                         'timestamp': log.get('timestamp')
                     })
+
+        unauthorized_attempts = sum(
+            1 for log in all_logs 
+            if log.get('action_type') in [
+                'UNAUTHORIZED_ADMIN_ACCESS_ATTEMPT',
+                'UNAUTHORIZED_DELETE_ATTEMPT',
+                'UNAUTHORIZED_ACCESS_ATTEMPT'
+            ]
+        )
+        
+        if unauthorized_attempts > 5:
+            suspicious_activities.append({
+                'type': 'MULTIPLE_UNAUTHORIZED_ATTEMPTS',
+                'severity': 'HIGH',
+                'description': f'{unauthorized_attempts} unauthorized access attempts detected',
+                'count': unauthorized_attempts
+            })
         
         return jsonify({
             'suspicious_activities': suspicious_activities,
-            'total_logs_analyzed': len(all_logs)
+            'total_logs_analyzed': len(all_logs),
+            'unauthorized_attempts': unauthorized_attempts
         }), 200
         
     except Exception as e:
         print(f"Error in fraud detection: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'Internal Server Error'}), 500
 
 @app.route('/api/admin/user-activity/<user_id>', methods=['GET'])
+@admin_required
 def get_user_activity_summary(user_id):
-    admin_id = session.get('user_id')
-    if not admin_id:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    admin = get_user_by_id(admin_id)
-    if not is_admin(admin):
-        return jsonify({'error': 'Forbidden'}), 403
-    
     try:
         logs = logger.get_user_actions(user_id, limit=500)
         
@@ -564,12 +622,11 @@ def get_user_activity_summary(user_id):
 
 
 @app.route('/api/delete-project/<project_id>', methods=['DELETE'])
+@login_required
 def delete_project(project_id):
     user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
     user = get_user_by_id(user_id)
+    
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
@@ -581,10 +638,25 @@ def delete_project(project_id):
     
     project = project_doc.to_dict()
     
-    if project.get('user_id') != user_id and not is_admin(user):
-        return jsonify({'error': 'Forbidden'}), 403
+    is_owner = project.get('user_id') == user_id
+    is_admin_user = is_admin(user)
     
-    if not is_admin(user) and project.get('status') != 'draft':
+    if not is_owner and not is_admin_user:
+        #unauth attempt log
+        logger.log_action(
+            action_type=ActionTypes.UNAUTHORIZED_DELETE_ATTEMPT,
+            user_id=user_id,
+            user_name=user.get('name'),
+            details={
+                'project_id': project_id,
+                'actual_owner': project.get('user_id'),
+                'project_status': project.get('status')
+            }
+        )
+        return jsonify({'error': 'Forbidden - Not your project'}), 403
+    
+    #only draft deletion for non admins
+    if not is_admin_user and project.get('status') != 'draft':
         return jsonify({'error': 'Only draft projects can be deleted'}), 403
     
     try:
@@ -596,7 +668,7 @@ def delete_project(project_id):
                 'project_id': project_id,
                 'project_name': project.get('name'),
                 'project_status': project.get('status'),
-                'was_admin_delete': is_admin(user),
+                'was_admin_delete': is_admin_user,
                 'approved_hours': project.get('approved_hours', 0)
             }
         )
@@ -613,12 +685,11 @@ def delete_project(project_id):
         return jsonify({'error': 'Internal Server Error'}), 500
 
 @app.route("/api/add-project", methods=['POST'])
+@login_required
 def add_project_api():
     user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
     user = get_user_by_id(user_id)
+    
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
@@ -627,8 +698,10 @@ def add_project_api():
     detail = data.get('detail')
     hackatime_project = data.get('hack_project')
     
-    if not name:
-        return jsonify({'error': 'Missing project name'}), 400
+    #input validation
+    is_valid, error_msg = validate_project_name(name)
+    if not is_valid:
+        return jsonify({'error': error_msg}), 400
     
     project_data = {
         'user_id': user_id,
@@ -674,17 +747,27 @@ def add_project_api():
     }), 201
 
 @app.route("/api/submit-project/<project_id>", methods=['POST'])
+@login_required
 def submit_project(project_id):
     user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
     user = get_user_by_id(user_id)
     project_ref = db.collection('projects').document(project_id)
     project = project_ref.get()
     
-    if not project.exists or project.to_dict().get('user_id') != user_id:
+    if not project.exists:
         return jsonify({'error': 'Project not found'}), 404
+    
+    project_data = project.to_dict()
+    
+    #ownership verification
+    if project_data.get('user_id') != user_id:
+        logger.log_action(
+            action_type=ActionTypes.UNAUTHORIZED_ACCESS_ATTEMPT,
+            user_id=user_id,
+            user_name=user.get('name'),
+            details={'project_id': project_id, 'action': 'submit_project'}
+        )
+        return jsonify({'error': 'Forbidden - Not your project'}), 403
     
     data = request.get_json()
     
@@ -711,7 +794,7 @@ def submit_project(project_id):
         user_name=user.get('name'),
         details={
             'project_id': project_id,
-            'project_name': project.to_dict().get('name'),
+            'project_name': project_data.get('name'),
             'github_url': data.get('github_url'),
             'demo_url': data.get('demo_url'),
             'languages': data.get('languages')
@@ -721,11 +804,9 @@ def submit_project(project_id):
     return jsonify({'message': 'Project submitted for review'}), 200
 
 @app.route("/api/project-details/<project_id>", methods=['GET'])
+@login_required
 def get_project_details(project_id):
     user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
     user = get_user_by_id(user_id)
     project_ref = db.collection('projects').document(project_id)
     project_doc = project_ref.get()
@@ -736,8 +817,22 @@ def get_project_details(project_id):
     project = project_doc.to_dict()
     project['id'] = project_doc.id
     
-    if not is_admin(user) and project.get('user_id') != user_id:
-        return jsonify({'error': 'Forbidden'}), 403
+    # STRICT access control
+    is_owner = project.get('user_id') == user_id
+    is_admin_user = is_admin(user)
+    
+    if not is_owner and not is_admin_user:
+        logger.log_action(
+            action_type=ActionTypes.UNAUTHORIZED_ACCESS_ATTEMPT,
+            user_id=user_id,
+            user_name=user.get('name'),
+            details={
+                'project_id': project_id,
+                'owner': project.get('user_id'),
+                'action': 'view_project_details'
+            }
+        )
+        return jsonify({'error': 'Forbidden - Not your project'}), 403
     
     project_owner = get_user_by_id(project['user_id'])
     project_owner_name = project_owner.get('name') if project_owner else 'Unknown User'
@@ -793,26 +888,17 @@ def get_project_details(project_id):
     }), 200
 
 @app.route('/admin/dashboard')
+@admin_required
 def admin_dashboard():
     user_id = session.get('user_id')
-    if not user_id:
-        return redirect("/signin")
-    
     user = get_user_by_id(user_id)
-    if not is_admin(user):
-        return redirect("/dashboard")
-
     return render_template('admin_dashboard.html', user=user)
 
 @app.route('/admin/api/review-project/<project_id>', methods=['POST'])
+@admin_required
 def admin_review_project(project_id):
     user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
     user = get_user_by_id(user_id)
-    if not is_admin(user):
-        return jsonify({'error': 'Forbidden'}), 403
     
     project_ref = db.collection('projects').document(project_id)
     project_doc = project_ref.get()
@@ -863,14 +949,10 @@ def admin_review_project(project_id):
     return jsonify({'message': 'Project review updated'}), 200
 
 @app.route('/admin/api/comment-project/<project_id>', methods=['POST'])
+@admin_required
 def admin_comment_project(project_id):
     user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Unauthorised'}), 401
-    
     user = get_user_by_id(user_id)
-    if not is_admin(user):
-        return jsonify({'error': 'Forbidden'}), 403
     
     project_ref = db.collection('projects').document(project_id)
     project_doc = project_ref.get()
@@ -909,14 +991,9 @@ def admin_comment_project(project_id):
     return jsonify({'message': 'Comment added'}), 201
 
 @app.route('/admin/api/assign-project/<project_id>', methods=['POST'])
+@admin_required
 def admin_assign_project(project_id):
     user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Unauthorised'}), 401
-    
-    user = get_user_by_id(user_id)
-    if not is_admin(user):
-        return jsonify({'error': 'Forbidden'}), 403
     
     project_ref = db.collection('projects').document(project_id)
     if not project_ref.get().exists:
@@ -927,12 +1004,11 @@ def admin_assign_project(project_id):
 
 
 @app.route('/api/project-hours', methods=['GET'])
+@login_required
 def get_project_hours():
     user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Unauthorised'}), 401
-    
     user = get_user_by_id(user_id)
+    
     if not user or not user.get('slack_id'):
         return jsonify({'hours': 0, 'message': 'Not connected to Hackatime'}), 200
     
@@ -996,23 +1072,17 @@ def leaderboard():
     return render_template('leaderboard.html', leaderboard=users_data, user=user)
 
 @app.route('/market')
+@login_required
 def shop():
     user_id = session.get('user_id')
-    if not user_id:
-        return redirect('/signin')
-    
     user = get_user_by_id(user_id)
     return render_template('soon.html', user=user)
 
 @app.route('/admin/api/award-tiles/<project_id>', methods=['POST'])
+@admin_required
 def admin_award_tiles(project_id):
     user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
     user = get_user_by_id(user_id)
-    if not is_admin(user):
-        return jsonify({'error': 'Forbidden'}), 403
     
     project_ref = db.collection('projects').document(project_id)
     project_doc = project_ref.get()
@@ -1057,14 +1127,10 @@ def admin_award_tiles(project_id):
     }), 200
 
 @app.route('/admin/api/add-theme', methods=['POST'])
+@admin_required
 def admin_add_theme():
     user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
     user = get_user_by_id(user_id)
-    if not is_admin(user):
-        return jsonify({'error': 'Forbidden'}), 403
     
     data = request.get_json()
     theme_name = data.get('name')
@@ -1104,6 +1170,7 @@ def admin_add_theme():
     }), 201
 
 @app.route('/api/themes', methods=['GET'])
+@login_required
 def get_themes():
     themes_ref = db.collection('themes').where('is_active', '==', True).stream()
     themes = []
@@ -1120,14 +1187,10 @@ def get_themes():
     return jsonify({'themes': themes}), 200
 
 @app.route('/admin/api/delete-theme/<theme_id>', methods=['DELETE'])
+@admin_required
 def admin_delete_theme(theme_id):
     user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Unauthorised'}), 401
-    
     user = get_user_by_id(user_id)
-    if not is_admin(user):
-        return jsonify({'error': 'Forbidden'}), 403
     
     theme_ref = db.collection('themes').document(theme_id)
     theme_doc = theme_ref.get()

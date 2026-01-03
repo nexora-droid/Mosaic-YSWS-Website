@@ -62,28 +62,37 @@ class audit_logger:
     
     def search_logs(self, action_type=None, user_id=None, start_date=None, end_date=None):
         try:
-            logs_ref = self.db.collection('audit_logs')
             if action_type:
-                logs_ref = logs_ref.where('action_type', '==', action_type)
-            
-            if user_id:
-                logs_ref = logs_ref.where('user_id', '==', user_id)
-            logs_ref = logs_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(500)
+                logs_ref = (self.db.collection('audit_logs')
+                           .where('action_type', '==', action_type)
+                           .limit(1000)) 
+            elif user_id:
+                logs_ref = (self.db.collection('audit_logs')
+                           .where('user_id', '==', user_id)
+                           .limit(1000))
+            else:
+                logs_ref = (self.db.collection('audit_logs')
+                           .order_by('timestamp', direction=firestore.Query.DESCENDING)
+                           .limit(500))
             
             logs = []
             for log in logs_ref.stream():
                 log_data = log.to_dict()
-                timestamp = log_data['timestamp'].isoformat()
-                
-                if start_date and timestamp < start_date:
+                timestamp = log_data['timestamp']
+                if hasattr(timestamp, 'isoformat'):
+                    timestamp_iso = timestamp.isoformat()
+                else:
+                    timestamp_iso = timestamp
+                if start_date and timestamp_iso < start_date:
                     continue
-                if end_date and timestamp > end_date:
+                if end_date and timestamp_iso > end_date:
                     continue
                 
-                log_data['timestamp'] = timestamp
+                log_data['timestamp'] = timestamp_iso
                 logs.append(log_data)
+            logs.sort(key=lambda x: x['timestamp'], reverse=True)
+            return logs[:500]
             
-            return logs
         except Exception as e:
             print(f"Error searching audit log: {e}")
             return []
@@ -104,7 +113,11 @@ class ActionTypes:
     TILES_BALANCE_CHANGE = 'TILES_BALANCE_CHANGE'
     ADMIN_CREATE_THEME = 'ADMIN_CREATE_THEME'
     ADMIN_DELETE_THEME = 'ADMIN_DELETE_THEME'
+    UNAUTHORIZED_ADMIN_ACCESS_ATTEMPT = 'UNAUTHORIZED_ADMIN_ACCESS_ATTEMPT'
+    UNAUTHORIZED_DELETE_ATTEMPT = 'UNAUTHORIZED_DELETE_ATTEMPT'
+    UNAUTHORIZED_ACCESS_ATTEMPT = 'UNAUTHORIZED_ACCESS_ATTEMPT'
     SUSPICIOUS_RAPID_ACTIONS = 'SUSPICIOUS_RAPID_ACTIONS'
     SUSPICIOUS_MULTIPLE_DELETES = 'SUSPICIOUS_MULTIPLE_DELETES'
     SUSPICIOUS_TILE_REQUEST = 'SUSPICIOUS_TILE_REQUEST'
+    BLOCKED_IP_ACCESS_ATTEMPT = 'BLOCKED_IP_ACCESS_ATTEMPT'
 
