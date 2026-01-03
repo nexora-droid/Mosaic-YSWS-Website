@@ -1,77 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+ <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/faq.css')}}">
     <title>FAQ || Mosaic</title>
 </head>
-<body>
-    <h1>Frequently Asked Questions</h1>
-    <div class="faq">
-        <div class="question">
-            <div class="question-header">
-                <h2>What is this about?</h2>
-                <span class="icon">+</span>
-            </div>
-            <p>Mosaic is similar to <i>Siege</i> but for frontend/backend development! <br> Every month, a random theme is announced and the participants - which is probably YOU - build a full-stack website/application about that theme! A judging team will review your project in 1 week, and you will be awarded Tiles - our currency - based on the quality of your project!
-            </p>
-        </div>
-        <div class="question">
-            <div class="question-header">
-                <h2>Is this YSWS double-dippable?</h2>
-                <span class="icon">+</span>
-            </div>
-            <p>No, Mosaic is not double-dippable with any YSWS.</p>
-        </div>
-        <div class="question">
-            <div class="question-header">
-                <h2>Is particpation free?</h2>
-                <span class="icon">+</span>
-            </div>
-            <p>Yes particpation is free for all teenagers registered with Hack Club, aged 13-18. Unless your identity is <b>verified</b> you will not be able to access the webpage!</p>
-        </div>
-        <div class="question">
-            <div class="question-header">
-                <h2>How long will Mosaic last?</h2>
-                <span class="icon">+</span>
-            </div>
-            <p>Mosaic will last for 1 year! Starting January 1, 2026 to December 31, 2026. We look forward to seeing what you make!</p>
-        </div>
-        <div class="question">
-            <div class="question-header">
-                <h2>Can we work in teams?</h2>
-                <span class="icon">+</span>
-            </div>
-            <p>This YSWS has <span style="color: red;">NO PLANS of ALLOWING TEAMS</span>, as we want true full-stack developers (or aspiring ones) to take part in this, and truly feel happy about what they have done! <br> We do not recommend working in teams, and this is why our <span style="color: red;">Skip Policy</span> is in action, as you may want to spend time learning first and then making!</p>
-        </div>
-        <div class="question">
-            <div class="question-header">
-                <h2>What is the judging criteria?</h2>
-                <span class="icon">+</span>
-            </div>
-            <p>For our judging criteria pleaese head over to <a href="https://hackclub.enterprise.slack.com/docs/T0266FRGM/F09SYUXAQPM" target="_blank">The Constituion of Tilemakers</a>. To view this document you will need to be part of the Hack Club Slack.</p>
-        </div>
-        <div class="question">
-            <div class="question-header">
-                <h2>My project hasn't been reviewed for XYZ days/weeks</h2>
-                <span class="icon">+</span>
-            </div>
-            <p>Please note that we have few reviewers who may not be available at all times to review your project. Your project may not be reviewed yet as there may be a break for our reviewing team. Refer to <a href="https://hackclub.enterprise.slack.com/archives/C0A5C87PDBK">#mosaic-help</a> or <a href="https://hackclub.enterprise.slack.com/archives/C0A4HSRB1D5" target="_blank">#mosaic-bulletin</a> for information regarding delayed reviews.</p>
-        </div>
-        <div class="question">
-            <div class="question-header">
-                <h2>What happens if I miss a month? How do the hours work?</h2>
-                <span class="icon">+</span>
-            </div>
-            <p>
-                You do <span style="color:red;">not need to participate every month</span>.  
-                If you work on the <span style="color:red;">current month’s theme</span>, the minimum requirement is <span style="color:red;">30 hours</span>.  
-                If you <span style="color:red;">miss a month</span> and later decide to complete that theme, the requirement becomes <span style="color:red;">50 hours (one-time)</span>.  
-                After completing that, you can return to <span style="color:red;">30-hour projects</span> for future themes. Or even possibly smaller projects for the same theme that add up to 30 hours (same can be applied for 50 hours, multiple projects for 50 hours!).
-            </p>
+ <body>
+    <div id="container">
+        <div id="welcome"></div>
+        <div id="snow-container"></div>
 
-
+        <div class="content-layer">
+            <a href="/" class="back-button">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Back to Home
+            </a>
+            
+            <h1>Frequently Asked Questions</h1>
+            <div class="faq">
+                <div class="question">
+                    <div class="question-header">
+                        <h2>What is this about?</h2>
+                        <span class="icon">+</span>
+                    </div>
+                    <p>Mosaic is similar to <i>Siege</i> but for frontend/backend development! <br> Every month, a random theme is announced and the participants - which is probably YOU - build a full-stack website/application about that theme! A judging team will review your project in 1 week, and you will be awarded Tiles - our currency - based on the quality of your project!
+                    </p>
+                </div>
+                <div class="question">
+                    <div class="question-header">
+                        <h2>Is this YSWS double-dippable?</h2>
+                        <span class="icon">+</span>
+                    </div>
+                    <p>No, Mosaic is not double-dippable with any YSWS.</p>
+                </div>
+                <div class="question">
+                    <div class="question-header">
+                        <h2>Is particpation free?</h2>
+                        <span class="icon">+</span>
+                    </div>
+                    <p>Yes particpation is free for all teenagers registered with Hack Club, aged 13-18. Unless your identity is <b>verified</b> you will not be able to access the webpage!</p>
+                </div>
+                <div class="question">
+                    <div class="question-header">
+                        <h2>How long will Mosaic last?</h2>
+                        <span class="icon">+</span>
+                    </div>
+                    <p>Mosaic will last for 1 year! Starting January 1, 2026 to December 31, 2026. We look forward to seeing what you make!</p>
+                </div>
+                <div class="question">
+                    <div class="question-header">
+                        <h2>Can we work in teams?</h2>
+                        <span class="icon">+</span>
+                    </div>
+                    <p>This YSWS has <span style="color: red;">NO PLANS of ALLOWING TEAMS</span>, as we want true full-stack developers (or aspiring ones) to take part in this, and truly feel happy about what they have done! <br> We do not recommend working in teams, and this is why our <span style="color: red;">Skip Policy</span> is in action, as you may want to spend time learning first and then making!</p>
+                </div>
+                <div class="question">
+                    <div class="question-header">
+                        <h2>What is the judging criteria?</h2>
+                        <span class="icon">+</span>
+                    </div>
+                    <p>For our judging criteria pleaese head over to <a href="https://hackclub.enterprise.slack.com/docs/T0266FRGM/F09SYUXAQPM" target="_blank">The Constituion of Tilemakers</a>. To view this document you will need to be part of the Hack Club Slack.</p>
+                </div>
+                <div class="question">
+                    <div class="question-header">
+                        <h2>My project hasn't been reviewed for XYZ days/weeks</h2>
+                        <span class="icon">+</span>
+                    </div>
+                    <p>Please note that we have few reviewers who may not be available at all times to review your project. Your project may not be reviewed yet as there may be a break for our reviewing team. Refer to <a href="https://hackclub.enterprise.slack.com/archives/C0A5C87PDBK">#mosaic-help</a> or <a href="https://hackclub.enterprise.slack.com/archives/C0A4HSRB1D5" target="_blank">#mosaic-bulletin</a> for information regarding delayed reviews.</p>
+                </div>
+                <div class="question">
+                    <div class="question-header">
+                        <h2>What happens if I miss a month? How do the hours work?</h2>
+                        <span class="icon">+</span>
+                    </div>
+                    <p>
+                        You do <span style="color:red;">not need to participate every month</span>.  
+                        If you work on the <span style="color:red;">current month's theme</span>, the minimum requirement is <span style="color:red;">30 hours</span>.  
+                        If you <span style="color:red;">miss a month</span> and later decide to complete that theme, the requirement becomes <span style="color:red;">50 hours (one-time)</span>.  
+                        After completing that, you can return to <span style="color:red;">30-hour projects</span> for future themes. Or even possibly smaller projects for the same theme that add up to 30 hours (same can be applied for 50 hours, multiple projects for 50 hours!).
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
     <script>
         const questions = document.querySelectorAll('.question');
 
@@ -82,6 +97,23 @@
                 icon.textContent = q.classList.contains('active') ? '−' : '+';
             });
         });
+        document.addEventListener("DOMContentLoaded", function() {
+            const snowContainer = document.getElementById('snow-container');
+            const snowflakeCount = 50; 
+
+            for (let i = 0; i < snowflakeCount; i++) {
+                let flake = document.createElement('div');
+                flake.classList.add('snowflake');
+                let size = Math.random() * 5 + 2 + 'px';
+                flake.style.width = size;
+                flake.style.height = size;
+                flake.style.left = Math.random() * 100 + 'vw';
+                flake.style.animationDuration = Math.random() * 3 + 2 + 's';
+                flake.style.animationDelay = Math.random() * 5 + 's';
+                
+                snowContainer.appendChild(flake);
+            }
+        });
     </script>
-</body>
+ </body>
 </html>

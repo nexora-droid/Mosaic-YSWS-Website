@@ -87,7 +87,7 @@ body {
 
 #hero1{
     position: absolute;
-    top: 50%;
+    top: 45%;
     left: 50%;
     transform: translate(-50%, -50%);
     color: var(--color);
@@ -99,7 +99,7 @@ body {
 
 #start{
     position: absolute;
-    top: 65%;
+    top: 58%;
     left: 50%;
     transform: translate(-50%, -50%);
     color: black;
@@ -128,6 +128,70 @@ body {
     0% {transform: translate(-50%, -47%);}
     50%{transform: translate(-50%, -53%);}
     100%{transform: translate(-50%, -47%);}
+}
+
+/* Footer*/
+.footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 25px 0;
+    pointer-events: auto;
+    z-index: 20;
+}
+
+.footer-links {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 40px;
+    flex-wrap: wrap;
+}
+
+.footer-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color);
+    font-family: var(--family);
+    font-size: 16px;
+    text-decoration: none;
+    opacity: 0.8;
+    transition: all 0.3s ease;
+    padding: 8px 16px;
+    border-radius: 8px;
+}
+
+.footer-link:hover {
+    opacity: 1;
+    color: #f2545b;
+    background-color: rgba(242, 84, 91, 0.1);
+    transform: translateY(-2px);
+}
+
+.footer-link svg {
+    transition: transform 0.3s ease;
+}
+
+.footer-link:hover svg {
+    transform: scale(1.1);
+}
+
+@media (max-width: 600px) {
+    .footer-links {
+        gap: 20px;
+    }
+    
+    .footer-link {
+        font-size: 14px;
+        padding: 6px 12px;
+    }
+    
+    .footer-link svg {
+        width: 16px;
+        height: 16px;
+    }
 }
 
 /*---SNOWWWWW---*/
