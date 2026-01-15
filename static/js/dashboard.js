@@ -17,14 +17,21 @@ async function loadCurrentTheme() {
         const response = await fetch('/api/themes');
         const data = await response.json();
         
+        const themeNameElement = document.getElementById('theme-name');
+        const themeDescElement = document.getElementById('theme-description');
+        
         if (data.themes && data.themes.length > 0) {
-            document.getElementById('theme-name').textContent = data.themes[0].name;
+            const theme = data.themes[0];
+            themeNameElement.textContent = `Current Theme: ${theme.name}`;
+            themeDescElement.textContent = theme.description || 'No description available';
         } else {
-            document.getElementById('theme-name').textContent = 'No active theme';
+            themeNameElement.textContent = 'Current Theme: No active theme';
+            themeDescElement.textContent = '';
         }
     } catch (e) {
         console.error('Error loading theme:', e);
-        document.getElementById('theme-name').textContent = 'Error loading';
+        document.getElementById('theme-name').textContent = 'Current Theme: Error loading';
+        document.getElementById('theme-description').textContent = '';
     }
 }
 

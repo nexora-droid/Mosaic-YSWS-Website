@@ -112,6 +112,10 @@ html, body {
     padding: 20px;
     overflow-y: auto;
     flex-shrink: 0;
+    background-color: white;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
+    margin: 10px;
 }
 
 .section-header {
@@ -236,16 +240,27 @@ html, body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 15px;
-    color: #999;
+    gap: 20px;
     margin-bottom: 20px;
+    background-color: white;
+    border-radius: 12px;
+    padding: 40px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .empty-message {
-    font-size: 22px;
-    font-style: italic;
+    font-size: 28px;
     font-family: 'Space Grotesk', sans-serif;
-    color: #BBB;
+    color: var(--text-dark);
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.empty-image {
+    max-width: 400px;
+    width: 100%;
+    height: auto;
+    opacity: 0.9;
 }
 
 #project-info {
@@ -403,6 +418,46 @@ html, body {
 .current-theme {
     background-color: white;
     color: var(--text-dark);
+    min-height: 48px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.theme-name {
+    display: inline-block;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.theme-description {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    white-space: nowrap;
+    pointer-events: none;
+    font-size: 14px;
+    color: #666;
+}
+
+.current-theme:hover .theme-name {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+.current-theme:hover .theme-description {
+    opacity: 1;
+}
+
+.empty-projects-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+    font-size: 16px;
+    font-style: italic;
 }
 
 #hackatime-warning {

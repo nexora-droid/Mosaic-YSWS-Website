@@ -39,6 +39,11 @@
             </div>
             
             <div id="projects-list">
+                {% if not saved_projects %}
+                <div class="empty-projects-message">
+                    No Projects yet?
+                </div>
+                {% else %}
                 {% for sp in saved_projects %}
                 <div class="project-card" 
                      data-project-id="{{sp.id}}" 
@@ -56,23 +61,31 @@
                     </div>
                 </div>
                 {% endfor %}
+                {% endif %}
             </div>
         </div>
 
         <div id="right-side">
-            <div id="empty-state" {% if saved_projects %}style="display: none;"{% endif %}>
+            {% if not saved_projects %}
+            <div id="empty-state">
+                <img src="{{ url_for('static', filename='images/buildsmth.png')}}" alt="Build Something" class="empty-image">
+            </div>
+            {% else %}
+            <div id="empty-state" style="display: none;">
                 <p class="empty-message">No Tile-work selected...</p>
             </div>
             
-            <div id="project-info" {% if not saved_projects %}style="display: none;"{% endif %}>
+            <div id="project-info">
             </div>
+            {% endif %}
             
             <div id="bottom-info">
                 <div class="info-card tiles-balance">
                     Current Balance: {{ user.tiles_balance if user.tiles_balance else 0 }} Tiles
                 </div>
                 <div class="info-card current-theme">
-                    Current Theme: <span id="theme-name">Loading...</span>
+                    <span class="theme-name" id="theme-name">Current Theme: Loading...</span>
+                    <span class="theme-description" id="theme-description"></span>
                 </div>
             </div>
         </div>
