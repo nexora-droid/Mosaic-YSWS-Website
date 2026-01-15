@@ -669,32 +669,6 @@ body {
 }
 
 
-.modal {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    backdrop-filter: blur(4px);
-}
-
-.modal.hidden {
-    display: none;
-}
-
-.modal-content {
-    background-color: white;
-    padding: 40px;
-    border-radius: 20px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-    max-width: 800px;
-    width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
-    position: relative;
-}
 
 .close-btn {
     position: absolute;
