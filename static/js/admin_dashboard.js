@@ -563,7 +563,12 @@ async function awardTiles(projectId) {
 }
 
 async function quickReject(projectId) {
-    const comment = prompt('Please provide a reason for rejection:');
+    const comment = await showPrompt(
+        'Please provide a reason for rejection:',
+        'Rejection Reason',
+        'e.g., Project does not meet theme requirements, incomplete functionality, etc.'
+    );
+    
     if (!comment) return;
 
     try {
