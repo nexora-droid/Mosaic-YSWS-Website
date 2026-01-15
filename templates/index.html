@@ -3,9 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico')}}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/mosaic.png')}}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:title" content="Mosaic">
+    <meta property="og:description" content="Build a website every month with a different theme. Get stuff. Repeat.">
+    <meta property="og:image" content="{{ url_for('static', filename='images/mosaic.png', _external=True) }}">
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="{{ request.url }}">
+    <meta property="twitter:title" content="Mosaic">
+    <meta property="twitter:description" content="Build a website every month with a different theme. Get stuff. Repeat.">
+    <meta property="twitter:image" content="{{ url_for('static', filename='images/mosaic.png', _external=True) }}">
     <title>Mosaic - Full Stack YSWS</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css')}}">
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico')}}">
 </head>
 <body>
     <div id="container">
