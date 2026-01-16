@@ -1,43 +1,67 @@
 from datetime import datetime, timezone
 from flask import request, session
-from firebase_admin import firestore
+import json
 
 class audit_logger:
-    def __init__(self, db):
-        self.db = db
+    def __init__(self, db_manager):
+        self.db_manager = db_manager
     
     def log_action(self, action_type, user_id=None, user_name=None, details=None, target_user_id=None):
         log_entry = {
-            'timestamp': datetime.now(timezone.utc),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'action_type': action_type,
             'user_id': user_id,
             'user_name': user_name,
             'target_user_id': target_user_id,
-            'details': details or {},
+            'details': json.dumps(details or {}),
             'ip_address': request.remote_addr if request else None,
             'user_agent': request.headers.get('User-Agent') if request else None,
             'session_id': session.get('user_id') if session else None
         }
         
         try:
-            self.db.collection('audit_logs').add(log_entry)
+            conn = self.db_manager.get_connection()
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO audit_logs 
+                (timestamp, action_type, user_id, user_name, target_user_id, 
+                 details, ip_address, user_agent, session_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                log_entry['timestamp'],
+                log_entry['action_type'],
+                log_entry['user_id'],
+                log_entry['user_name'],
+                log_entry['target_user_id'],
+                log_entry['details'],
+                log_entry['ip_address'],
+                log_entry['user_agent'],
+                log_entry['session_id']
+            ))
+            conn.commit()
+            conn.close()
             print(f"[AUDIT LOG] {action_type} by {user_name or user_id}")
         except Exception as e:
             print(f"Error writing to audit log: {e}")
     
     def get_user_actions(self, user_id, limit=100):
         try:
-            logs_ref = (self.db.collection('audit_logs')
-                       .where('user_id', '==', user_id)
-                       .order_by('timestamp', direction=firestore.Query.DESCENDING)
-                       .limit(limit))
+            conn = self.db_manager.get_connection()
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT * FROM audit_logs 
+                WHERE user_id = ? 
+                ORDER BY timestamp DESC 
+                LIMIT ?
+            ''', (user_id, limit))
             
             logs = []
-            for log in logs_ref.stream():
-                log_data = log.to_dict()
-                log_data['timestamp'] = log_data['timestamp'].isoformat()
+            for row in cursor.fetchall():
+                log_data = dict(row)
+                log_data['details'] = json.loads(log_data['details']) if log_data['details'] else {}
                 logs.append(log_data)
             
+            conn.close()
             return logs
         except Exception as e:
             print(f"Error reading audit log: {e}")
@@ -45,16 +69,21 @@ class audit_logger:
     
     def get_recent_actions(self, limit=100):
         try:
-            logs_ref = (self.db.collection('audit_logs')
-                       .order_by('timestamp', direction=firestore.Query.DESCENDING)
-                       .limit(limit))
+            conn = self.db_manager.get_connection()
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT * FROM audit_logs 
+                ORDER BY timestamp DESC 
+                LIMIT ?
+            ''', (limit,))
             
             logs = []
-            for log in logs_ref.stream():
-                log_data = log.to_dict()
-                log_data['timestamp'] = log_data['timestamp'].isoformat()
+            for row in cursor.fetchall():
+                log_data = dict(row)
+                log_data['details'] = json.loads(log_data['details']) if log_data['details'] else {}
                 logs.append(log_data)
             
+            conn.close()
             return logs
         except Exception as e:
             print(f"Error reading audit log: {e}")
@@ -62,36 +91,40 @@ class audit_logger:
     
     def search_logs(self, action_type=None, user_id=None, start_date=None, end_date=None):
         try:
+            conn = self.db_manager.get_connection()
+            cursor = conn.cursor()
+            
+            query = "SELECT * FROM audit_logs WHERE 1=1"
+            params = []
+            
             if action_type:
-                logs_ref = (self.db.collection('audit_logs')
-                           .where('action_type', '==', action_type)
-                           .limit(1000)) 
-            elif user_id:
-                logs_ref = (self.db.collection('audit_logs')
-                           .where('user_id', '==', user_id)
-                           .limit(1000))
-            else:
-                logs_ref = (self.db.collection('audit_logs')
-                           .order_by('timestamp', direction=firestore.Query.DESCENDING)
-                           .limit(500))
+                query += " AND action_type = ?"
+                params.append(action_type)
+            
+            if user_id:
+                query += " AND user_id = ?"
+                params.append(user_id)
+            
+            if start_date:
+                query += " AND timestamp >= ?"
+                params.append(start_date)
+            
+            if end_date:
+                query += " AND timestamp <= ?"
+                params.append(end_date)
+            
+            query += " ORDER BY timestamp DESC LIMIT 500"
+            
+            cursor.execute(query, params)
             
             logs = []
-            for log in logs_ref.stream():
-                log_data = log.to_dict()
-                timestamp = log_data['timestamp']
-                if hasattr(timestamp, 'isoformat'):
-                    timestamp_iso = timestamp.isoformat()
-                else:
-                    timestamp_iso = timestamp
-                if start_date and timestamp_iso < start_date:
-                    continue
-                if end_date and timestamp_iso > end_date:
-                    continue
-                
-                log_data['timestamp'] = timestamp_iso
+            for row in cursor.fetchall():
+                log_data = dict(row)
+                log_data['details'] = json.loads(log_data['details']) if log_data['details'] else {}
                 logs.append(log_data)
-            logs.sort(key=lambda x: x['timestamp'], reverse=True)
-            return logs[:500]
+            
+            conn.close()
+            return logs
             
         except Exception as e:
             print(f"Error searching audit log: {e}")
