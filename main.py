@@ -1,4 +1,5 @@
 import os
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import Flask, request, render_template, redirect, session, jsonify
 from datetime import datetime, timezone, timedelta
 import requests
@@ -10,6 +11,13 @@ from functools import wraps
 load_dotenv()
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(
+	app.wsgi_app,
+	x_for=1,
+	x_proto=1,
+	x_host=1,
+	x_port=1
+)
 app.secret_key = os.getenv("SECRET_KEY")
 
 app.config['SESSION_PERMANENT'] = True
@@ -1401,10 +1409,3 @@ def get_user_activity_summary(user_id):
         print(f"Error getting user activity: {e}")
         return jsonify({'error': 'Internal Server Error'}), 500
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 4000))
-    app.run(
-        host="0.0.0.0",
-        port=port,
-        debug=True
-    )
