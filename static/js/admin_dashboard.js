@@ -2,6 +2,7 @@
 let selectedUserId = null;
 let allUsers = [];
 let currentFilter = 'all';
+let currentProjectFilter = 'all';
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadAllUsers();
@@ -113,6 +114,111 @@ function filterUsers() {
     renderUsers(filteredUsers);
 }
 
+async function applyProjectFilter(filter) {
+    currentProjectFilter = filter;
+    document.querySelectorAll('.project-filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-project-filter="${filter}"]`).classList.add('active');
+    
+    if (filter === 'all') {
+        const projectsList = document.getElementById('projects-list');
+        projectsList.innerHTML = `
+            <div class="empty-message">
+                <i class="fas fa-user-search" style="font-size: 80px; color: var(--blue-accent); margin-bottom: 15px;"></i>
+                <p>Select a user from the left sidebar</p>
+            </div>
+        `;
+        selectedUserId = null;
+        document.querySelectorAll('.user-item').forEach(item => {
+            item.classList.remove('active');
+        });
+    } else {
+        await loadAllProjectsByStatus(filter);
+    }
+}
+
+async function loadAllProjectsByStatus(status) {
+    const projectsList = document.getElementById('projects-list');
+    const contentHeader = document.querySelector('.content-header');
+
+    projectsList.innerHTML = `
+        <div class="empty-message">
+            <i class="fas fa-spinner fa-spin" style="font-size: 50px; color: var(--blue-accent);"></i>
+            <p style="margin-top: 15px;">Loading projects...</p>
+        </div>
+    `;
+    
+    selectedUserId = null;
+    document.querySelectorAll('.user-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    try {
+        const response = await fetch(`/api/projects-by-status/${status}`);
+        const data = await response.json();
+        
+        if (!response.ok) {
+            await showAlert('Error loading projects', 'error');
+            return;
+        }
+
+        const projects = data.projects || [];
+        
+        const statusLabels = {
+            'in_review': 'In Review',
+            'approved': 'Approved',
+            'rejected': 'Rejected'
+        };
+
+        contentHeader.innerHTML = `
+            <h1>All ${statusLabels[status]} Projects</h1>
+            <p>Showing ${projects.length} project${projects.length !== 1 ? 's' : ''}</p>
+        `;
+
+        if (projects.length > 0) {
+            const projectsByUser = {};
+            projects.forEach(project => {
+                const userName = project.user_name || 'Unknown User';
+                if (!projectsByUser[userName]) {
+                    projectsByUser[userName] = [];
+                }
+                projectsByUser[userName].push(project);
+            });
+
+            let html = '';
+            Object.keys(projectsByUser).forEach(userName => {
+                const userProjects = projectsByUser[userName];
+                html += `
+                    <div class="project-section">
+                        <h3 class="section-title">
+                            <i class="fas fa-user"></i> ${userName} (${userProjects.length})
+                        </h3>
+                        ${renderProjectCards(userProjects)}
+                    </div>
+                `;
+            });
+            
+            projectsList.innerHTML = html;
+        } else {
+            projectsList.innerHTML = `
+                <div class="empty-message">
+                    <i class="fas fa-folder-open" style="font-size: 80px; color: var(--blue-accent); margin-bottom: 15px;"></i>
+                    <p>No ${statusLabels[status].toLowerCase()} projects found</p>
+                </div>
+            `;
+        }
+    } catch (e) {
+        console.error('Error loading projects:', e);
+        await showAlert('Network error loading projects', 'error');
+        projectsList.innerHTML = `
+            <div class="empty-message">
+                <i class="fas fa-exclamation-circle" style="font-size: 80px; color: #D32F2F;"></i>
+                <p>Network error</p>
+            </div>
+        `;
+    }
+}
 async function applyFilter(filter) {
     currentFilter = filter;
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -124,6 +230,11 @@ async function applyFilter(filter) {
 
 async function selectUser(userId) {
     selectedUserId = userId;
+    currentProjectFilter = 'all'; 
+    document.querySelectorAll('.project-filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector('[data-project-filter="all"]')?.classList.add('active');
     
     document.querySelectorAll('.user-item').forEach(item => {
         item.classList.remove('active');
@@ -158,10 +269,21 @@ async function loadUserProjects(userId) {
             return;
         }
         const userName = data.user_name || 'Unknown User';
+        const userSlackId = data.user_slack_id || 'N/A';
         const totalRawHours = data.total_raw_hours || 0;
+        
         contentHeader.innerHTML = `
             <h1>${userName}'s Projects</h1>
-            <p>Total Hackatime Hours: <strong>${formatHoursMinutes(totalRawHours)}</strong></p>
+            <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                <p style="margin: 0;">
+                    <i class="fab fa-slack" style="color: var(--blue-accent); margin-right: 5px;"></i>
+                    <strong>Slack ID:</strong> <code style="background: var(--honeydew); padding: 4px 8px; border-radius: 4px; font-family: monospace;">${userSlackId}</code>
+                </p>
+                <p style="margin: 0;">
+                    <i class="fas fa-hourglass-half" style="color: var(--blue-accent); margin-right: 5px;"></i>
+                    <strong>Total Hackatime Hours:</strong> ${formatHoursMinutes(totalRawHours)}
+                </p>
+            </div>
         `;
 
         if (data.projects && data.projects.length > 0) {
@@ -259,11 +381,13 @@ function renderProjectCards(projects) {
             </div>
             <p class="project-description">${project.detail || 'No description'}</p>
             ${project.theme ? `<span class="theme-tag">${project.theme}</span>` : ''}
+            ${project.user_name && currentProjectFilter !== 'all' ? `<div style="font-size: 12px; color: #666; margin-top: 8px;"><i class="fas fa-user"></i> ${project.user_name}</div>` : ''}
             <div class="project-meta-info">
                 <span title="Approved Hours"><i class="fas fa-check-circle"></i> ${formatHoursMinutes(project.approved_hours || 0)}</span>
                 <span title="Raw Hours from Hackatime"><i class="fas fa-hourglass-half"></i> ${formatHoursMinutes(project.raw_hours || 0)}</span>
                 ${submittedDate ? `<span><i class="fas fa-calendar"></i> ${submittedDate}</span>` : ''}
             </div>
+            
             <div class="project-actions">
                 <button class="btn-review" onclick="event.stopPropagation(); viewProject('${project.id}')">
                     <i class="fas fa-eye"></i> Review
@@ -281,6 +405,8 @@ async function refreshAfterAction() {
     ]);
     if (selectedUserId) {
         await loadUserProjects(selectedUserId);
+    } else if (currentProjectFilter !== 'all') {
+        await loadAllProjectsByStatus(currentProjectFilter);
     }
 }
 
@@ -314,9 +440,10 @@ async function loadThemes() {
 
 async function loadStats() {
     try {
-        const statIds = ['stat-total-users', 'stat-total-projects', 'stat-draft', 'stat-pending', 'stat-approved', 'stat-total-hours', 'stat-raw-hours', 'stat-total-tiles'];
+        const statIds = ['stat-total-users', 'stat-total-projects', 'stat-draft', 'stat-pending', 'stat-approved', 'stat-rejected', 'stat-total-hours', 'stat-raw-hours', 'stat-total-tiles', 'stat-active-users'];
         statIds.forEach(id => {
-            document.getElementById(id).textContent = '...';
+            const element = document.getElementById(id);
+            if (element) element.textContent = '...';
         });
 
         const response = await fetch('/api/admin-stats');
@@ -328,20 +455,24 @@ async function loadStats() {
             document.getElementById('stat-draft').textContent = data.draft_projects || 0;
             document.getElementById('stat-pending').textContent = data.pending_reviews || 0;
             document.getElementById('stat-approved').textContent = data.approved_projects || 0;
+            document.getElementById('stat-rejected').textContent = data.rejected_projects || 0;
             document.getElementById('stat-total-hours').textContent = formatHoursMinutes(data.total_hours || 0);
             document.getElementById('stat-raw-hours').textContent = formatHoursMinutes(data.raw_hours || 0);
             document.getElementById('stat-total-tiles').textContent = data.total_tiles_awarded || 0;
+            document.getElementById('stat-active-users').textContent = data.active_users || 0;
         } else {
             console.error('Error loading stats:', data.error);
             statIds.forEach(id => {
-                document.getElementById(id).textContent = '-';
+                const element = document.getElementById(id);
+                if (element) element.textContent = '-';
             });
         }
     } catch (e) {
         console.error('Error loading stats:', e);
-        const statIds = ['stat-total-users', 'stat-total-projects', 'stat-draft', 'stat-pending', 'stat-approved', 'stat-total-hours', 'stat-raw-hours', 'stat-total-tiles'];
+        const statIds = ['stat-total-users', 'stat-total-projects', 'stat-draft', 'stat-pending', 'stat-approved', 'stat-rejected', 'stat-total-hours', 'stat-raw-hours', 'stat-total-tiles', 'stat-active-users'];
         statIds.forEach(id => {
-            document.getElementById(id).textContent = '-';
+            const element = document.getElementById(id);
+            if (element) element.textContent = '-';
         });
     }
 }

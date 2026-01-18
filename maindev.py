@@ -1,6 +1,5 @@
-# DONT DIRECTLY RUN THIS FILE AS IT USES GUNICORN AND IS NOT IDEAL FOR DEVELOPEMNT EDIT maindev.py AND MAKE CHANGES AND THEN WHEN IT'S DONE COPY CHANGES IN THIS FILE (MAIN PRODUCTION FILE)
+# CAN SAFELY EDIT THIS CODE AND THEN REPLICATE CHANGES IN main.py!!
 import os
-from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import Flask, request, render_template, redirect, session, jsonify
 from datetime import datetime, timezone, timedelta
 import requests
@@ -12,13 +11,6 @@ from functools import wraps
 load_dotenv()
 
 app = Flask(__name__)
-app.wsgi_app = ProxyFix(
-	app.wsgi_app,
-	x_for=1,
-	x_proto=1,
-	x_host=1,
-	x_port=1
-)
 app.secret_key = os.getenv("SECRET_KEY")
 
 app.config['SESSION_PERMANENT'] = True
@@ -828,6 +820,8 @@ def get_admin_stats():
         user_stats = cursor.fetchone()
         total_users = user_stats['count']
         total_tiles_awarded = user_stats['total_tiles'] or 0
+        
+        # Count active users (users with at least one project)
         cursor.execute('SELECT COUNT(DISTINCT user_id) as count FROM projects')
         active_users = cursor.fetchone()['count']
         
@@ -902,55 +896,6 @@ def get_admin_stats():
         print(f"Error fetching admin stats: {e}")
         return jsonify({'error': 'Internal Server Error'}), 500
 
-@app.route('/api/user-projects/<user_id>', methods=['GET'])
-@admin_required
-def get_user_projects(user_id):
-    try:
-        conn = db_manager.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('SELECT * FROM projects WHERE user_id = ?', (user_id,))
-        projects = [dict(row) for row in cursor.fetchall()]
-        
-        user = get_user_by_id(user_id)
-        hackatime_projects = {}
-        total_raw_hours = 0
-        
-        if user and user.get('slack_id'):
-            try:
-                url = f"{HACKATIME_BASE_URL}/users/{user['slack_id']}/stats?features=projects"
-                headers = autoconnectHackatime()
-                response = requests.get(url, headers=headers, timeout=10)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    raw_projects = data.get("data", {}).get('projects', [])
-                    for proj in raw_projects:
-                        hackatime_projects[proj.get('name')] = proj.get('total_seconds', 0) / 3600
-            except Exception as e:
-                print(f"Error fetching Hackatime data for user {user_id}: {e}")
-        
-        for proj in projects:
-            hackatime_name = proj.get('hackatime_project')
-            if hackatime_name and hackatime_name in hackatime_projects:
-                proj['raw_hours'] = round(hackatime_projects[hackatime_name], 2)
-                total_raw_hours += hackatime_projects[hackatime_name]
-            else:
-                proj['raw_hours'] = 0
-        
-        projects.sort(key=lambda x: x.get('created_at', ''), reverse=True)
-        
-        conn.close()
-        
-        return jsonify({
-            'projects': projects,
-            'total_raw_hours': round(total_raw_hours, 2),
-            'user_name': user.get('name') if user else 'Unknown',
-            'user_slack_id': user.get('slack_id') if user else None
-        }), 200
-    except Exception as e:
-        print(f"Error fetching user projects: {e}")
-        return jsonify({'error': 'Internal Server Error'}), 500
 
 @app.route('/api/projects-by-status/<status>', methods=['GET'])
 @admin_required
@@ -1013,6 +958,56 @@ def get_projects_by_status(status):
         print(f"Error fetching projects by status: {e}")
         return jsonify({'error': 'Internal Server Error'}), 500
 
+@app.route('/api/user-projects/<user_id>', methods=['GET'])
+@admin_required
+def get_user_projects(user_id):
+    try:
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT * FROM projects WHERE user_id = ?', (user_id,))
+        projects = [dict(row) for row in cursor.fetchall()]
+        
+        user = get_user_by_id(user_id)
+        hackatime_projects = {}
+        total_raw_hours = 0
+        
+        if user and user.get('slack_id'):
+            try:
+                url = f"{HACKATIME_BASE_URL}/users/{user['slack_id']}/stats?features=projects"
+                headers = autoconnectHackatime()
+                response = requests.get(url, headers=headers, timeout=10)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    raw_projects = data.get("data", {}).get('projects', [])
+                    for proj in raw_projects:
+                        hackatime_projects[proj.get('name')] = proj.get('total_seconds', 0) / 3600
+            except Exception as e:
+                print(f"Error fetching Hackatime data for user {user_id}: {e}")
+        
+        for proj in projects:
+            hackatime_name = proj.get('hackatime_project')
+            if hackatime_name and hackatime_name in hackatime_projects:
+                proj['raw_hours'] = round(hackatime_projects[hackatime_name], 2)
+                total_raw_hours += hackatime_projects[hackatime_name]
+            else:
+                proj['raw_hours'] = 0
+        
+        projects.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        
+        conn.close()
+        
+        return jsonify({
+            'projects': projects,
+            'total_raw_hours': round(total_raw_hours, 2),
+            'user_name': user.get('name') if user else 'Unknown',
+            'user_slack_id': user.get('slack_id') if user else None
+        }), 200
+    except Exception as e:
+        print(f"Error fetching user projects: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
+    
 @app.route('/admin/api/review-project/<project_id>', methods=['POST'])
 @admin_required
 def admin_review_project(project_id):
@@ -1475,3 +1470,10 @@ def get_user_activity_summary(user_id):
         print(f"Error getting user activity: {e}")
         return jsonify({'error': 'Internal Server Error'}), 500
 
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 4000))
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=True
+    )

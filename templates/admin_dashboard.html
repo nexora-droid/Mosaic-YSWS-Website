@@ -65,14 +65,28 @@
             <div id="users-list"></div>
         </div>
         <div class="projects-content">
+            <div class="project-filter-tabs">
+                <button class="project-filter-btn active" data-project-filter="all" onclick="applyProjectFilter('all')">
+                    <i class="fas fa-user"></i> By User
+                </button>
+                <button class="project-filter-btn" data-project-filter="in_review" onclick="applyProjectFilter('in_review')">
+                    <i class="fas fa-clock"></i> In Review
+                </button>
+                <button class="project-filter-btn" data-project-filter="approved" onclick="applyProjectFilter('approved')">
+                    <i class="fas fa-check-circle"></i> Approved
+                </button>
+                <button class="project-filter-btn" data-project-filter="rejected" onclick="applyProjectFilter('rejected')">
+                    <i class="fas fa-times-circle"></i> Rejected
+                </button>
+            </div>
             <div class="content-header">
                 <h1>Projects to Review</h1>
-                <p>Select a user to view their projects</p>
+                <p>Select a user to view their projects or use the tabs above to view all projects by status</p>
             </div>
             <div id="projects-list" class="projects-list">
                 <div class="empty-message">
                     <i class="fas fa-user-search" style="font-size: 80px; color: var(--blue-accent); margin-bottom: 15px;"></i>
-                    <p>Select a user from the left sidebar</p>
+                    <p>Select a user from the left sidebar or choose a status filter above</p>
                 </div>
             </div>
         </div>
@@ -104,6 +118,10 @@
                         <p class="stat-number" id="stat-approved">-</p>
                         <p class="stat-label">Approved Projects</p>
                     </div>
+                    <div class="stat-box-compact" style="background: linear-gradient(135deg, #FFEBEE 0%, white 100%);">
+                        <p class="stat-number" style="color: #C62828;" id="stat-rejected">-</p>
+                        <p class="stat-label">Rejected Projects</p>
+                    </div>
                     <div class="stat-box-compact">
                         <p class="stat-number" id="stat-total-hours">-</p>
                         <p class="stat-label">Approved Hours</p>
@@ -115,6 +133,10 @@
                     <div class="stat-box-compact highlight">
                         <p class="stat-number" id="stat-total-tiles">-</p>
                         <p class="stat-label">Total Tiles Awarded</p>
+                    </div>
+                    <div class="stat-box-compact" style="background: linear-gradient(135deg, #E1F5FE 0%, white 100%);">
+                        <p class="stat-number" style="color: #01579B;" id="stat-active-users">-</p>
+                        <p class="stat-label">Active Users</p>
                     </div>
                 </div>
             </div>

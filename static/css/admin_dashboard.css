@@ -329,8 +329,9 @@ body {
     position: sticky;
     top: 0;
     background: #f9f9f9;
-    padding-bottom: 15px;
+    padding: 15px 0;
     z-index: 10;
+    margin-top: -30px;
 }
 
 .content-header h1 {
@@ -342,9 +343,20 @@ body {
 }
 
 .content-header p {
-    margin: 0;
+    margin: 5px 0;
     color: #666;
     font-size: 14px;
+    line-height: 1.6;
+}
+
+.content-header code {
+    background: var(--honeydew);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: var(--blue-accent);
+    font-weight: 600;
 }
 
 .projects-list {
@@ -971,5 +983,75 @@ body {
     
     .stats-grid {
         grid-template-columns: 1fr;
+    }
+}
+.project-filter-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.project-filter-btn {
+    flex: 1;
+    padding: 12px 20px;
+    background: var(--honeydew);
+    color: var(--dark-gray);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Space Grotesk', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.project-filter-btn:hover {
+    background: white;
+    border-color: var(--blue-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.project-filter-btn.active {
+    background: var(--blue-accent);
+    color: white;
+    border-color: var(--blue-accent);
+}
+
+.project-filter-btn i {
+    font-size: 16px;
+}
+
+@media (max-width: 968px) {
+    .project-filter-tabs {
+        flex-wrap: wrap;
+    }
+    
+    .project-filter-btn {
+        flex: 1 1 calc(50% - 5px);
+    }
+}
+
+@media (max-width: 600px) {
+    .project-filter-tabs {
+        gap: 8px;
+        padding: 10px;
+    }
+    
+    .project-filter-btn {
+        flex: 1 1 100%;
+        font-size: 13px;
+        padding: 10px 15px;
     }
 }
