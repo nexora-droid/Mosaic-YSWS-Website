@@ -1329,11 +1329,12 @@ def get_audit_logs():
 @admin_required
 def fraud_detection():
     try:
-        all_logs = logger.get_recent_actions(1000)
+        all_logs = logger.get_recent_actions(2000)
         suspicious_activities = []
         
         user_action_counts = {}
         user_recent_actions = {}
+        user_first_seen = {}
         
         for log in all_logs:
             log_user_id = log.get('user_id')
@@ -1346,6 +1347,7 @@ def fraud_detection():
             if log_user_id not in user_action_counts:
                 user_action_counts[log_user_id] = {}
                 user_recent_actions[log_user_id] = []
+                user_first_seen[log_user_id] = timestamp
             
             if action_type not in user_action_counts[log_user_id]:
                 user_action_counts[log_user_id][action_type] = 0
@@ -1357,82 +1359,155 @@ def fraud_detection():
             })
         
         for uid, actions in user_action_counts.items():
-            if actions.get('PROJECT_DELETE', 0) > 5:
+            delete_count = actions.get('PROJECT_DELETE', 0)
+            if delete_count > 5:
                 user_info = get_user_by_id(uid)
+                recent_deletes = [a for a in user_recent_actions[uid] if a['action'] == 'PROJECT_DELETE']
+                latest_timestamp = recent_deletes[-1]['timestamp'] if recent_deletes else None
+                
                 suspicious_activities.append({
                     'user_id': uid,
                     'user_name': user_info.get('name') if user_info else 'Unknown',
                     'type': 'EXCESSIVE_DELETIONS',
-                    'count': actions['PROJECT_DELETE'],
+                    'count': delete_count,
                     'severity': 'HIGH',
-                    'description': f'User deleted {actions["PROJECT_DELETE"]} projects'
+                    'description': f'Deleted {delete_count} projects (threshold: 5)',
+                    'timestamp': latest_timestamp
                 })
-            
-            if actions.get('PROJECT_CREATE', 0) > 10:
+        
+        for uid, actions in user_action_counts.items():
+            create_count = actions.get('PROJECT_CREATE', 0)
+            if create_count > 15:
                 user_info = get_user_by_id(uid)
+                recent_creates = [a for a in user_recent_actions[uid] if a['action'] == 'PROJECT_CREATE']
+                latest_timestamp = recent_creates[-1]['timestamp'] if recent_creates else None
+                
                 suspicious_activities.append({
                     'user_id': uid,
                     'user_name': user_info.get('name') if user_info else 'Unknown',
                     'type': 'EXCESSIVE_CREATIONS',
-                    'count': actions['PROJECT_CREATE'],
+                    'count': create_count,
                     'severity': 'MEDIUM',
-                    'description': f'User created {actions["PROJECT_CREATE"]} projects'
+                    'description': f'Created {create_count} projects (threshold: 15)',
+                    'timestamp': latest_timestamp
                 })
-            
-            recent = user_recent_actions[uid][-20:]
-            if len(recent) >= 10:
+        
+        for uid, recent_actions in user_recent_actions.items():
+            if len(recent_actions) >= 10:
+                recent_10 = recent_actions[-10:]
                 timestamps = sorted([
                     datetime.fromisoformat(a['timestamp']) 
-                    for a in recent[-10:]
+                    for a in recent_10
                 ])
                 
                 if len(timestamps) > 1:
                     time_span = (timestamps[-1] - timestamps[0]).total_seconds()
-                    if time_span > 0 and time_span < 60:
+                    if 0 < time_span < 60: 
                         user_info = get_user_by_id(uid)
                         suspicious_activities.append({
                             'user_id': uid,
                             'user_name': user_info.get('name') if user_info else 'Unknown',
                             'type': 'RAPID_ACTIONS',
                             'severity': 'MEDIUM',
-                            'description': f'10 actions in {time_span:.1f} seconds'
+                            'description': f'10 actions in {time_span:.1f} seconds (bot-like behavior)',
+                            'timestamp': recent_10[-1]['timestamp']
                         })
-
+        
         for log in all_logs:
             if log.get('action_type') == 'ADMIN_AWARD_TILES':
                 details = log.get('details', {})
                 tiles_awarded = details.get('tiles_awarded', 0)
-                if tiles_awarded > 1000:
+                if tiles_awarded > 500:  
                     suspicious_activities.append({
                         'user_id': log.get('user_id'),
                         'user_name': log.get('user_name'),
                         'type': 'LARGE_TILE_AWARD',
                         'severity': 'HIGH',
-                        'description': f'Awarded {tiles_awarded} tiles to {details.get("recipient_name")}',
+                        'description': f'Awarded {tiles_awarded} tiles to {details.get("recipient_name")} (threshold: 500)',
                         'timestamp': log.get('timestamp')
                     })
-
-        unauthorized_attempts = sum(
-            1 for log in all_logs 
-            if log.get('action_type') in [
-                'UNAUTHORIZED_ADMIN_ACCESS_ATTEMPT',
-                'UNAUTHORIZED_DELETE_ATTEMPT',
-                'UNAUTHORIZED_ACCESS_ATTEMPT'
-            ]
+        
+        unauthorized_types = [
+            'UNAUTHORIZED_ADMIN_ACCESS_ATTEMPT',
+            'UNAUTHORIZED_DELETE_ATTEMPT',
+            'UNAUTHORIZED_ACCESS_ATTEMPT'
+        ]
+        
+        unauthorized_by_user = {}
+        for log in all_logs:
+            if log.get('action_type') in unauthorized_types:
+                uid = log.get('user_id')
+                if uid:
+                    if uid not in unauthorized_by_user:
+                        unauthorized_by_user[uid] = []
+                    unauthorized_by_user[uid].append(log)
+        
+        for uid, attempts in unauthorized_by_user.items():
+            if len(attempts) > 3: 
+                user_info = get_user_by_id(uid)
+                suspicious_activities.append({
+                    'user_id': uid,
+                    'user_name': user_info.get('name') if user_info else 'Unknown',
+                    'type': 'MULTIPLE_UNAUTHORIZED_ATTEMPTS',
+                    'severity': 'HIGH',
+                    'count': len(attempts),
+                    'description': f'{len(attempts)} unauthorized access attempts (threshold: 3)',
+                    'timestamp': attempts[-1].get('timestamp')
+                })
+        
+        for uid, actions in user_action_counts.items():
+            creates = actions.get('PROJECT_CREATE', 0)
+            submits = actions.get('PROJECT_SUBMIT', 0)
+            
+            if creates >= 3 and submits >= 3:
+                create_actions = [a for a in user_recent_actions[uid] if a['action'] == 'PROJECT_CREATE']
+                submit_actions = [a for a in user_recent_actions[uid] if a['action'] == 'PROJECT_SUBMIT']
+                
+                if create_actions and submit_actions:
+                    create_time = datetime.fromisoformat(create_actions[-1]['timestamp'])
+                    submit_time = datetime.fromisoformat(submit_actions[-1]['timestamp'])
+                    time_diff = (submit_time - create_time).total_seconds()
+                    
+                    if 0 < time_diff < 3600:  
+                        user_info = get_user_by_id(uid)
+                        suspicious_activities.append({
+                            'user_id': uid,
+                            'user_name': user_info.get('name') if user_info else 'Unknown',
+                            'type': 'RAPID_PROJECT_LIFECYCLE',
+                            'severity': 'MEDIUM',
+                            'description': f'Created and submitted {submits} projects within 1 hour',
+                            'timestamp': submit_actions[-1]['timestamp']
+                        })
+        
+        for uid, actions in user_action_counts.items():
+            first_seen = user_first_seen.get(uid)
+            if first_seen:
+                account_age = (datetime.now(timezone.utc) - datetime.fromisoformat(first_seen)).total_seconds()
+                total_actions = sum(actions.values())
+                
+                if account_age < 86400 and total_actions > 20:  
+                    user_info = get_user_by_id(uid)
+                    suspicious_activities.append({
+                        'user_id': uid,
+                        'user_name': user_info.get('name') if user_info else 'Unknown',
+                        'type': 'NEW_USER_HIGH_ACTIVITY',
+                        'severity': 'MEDIUM',
+                        'description': f'New account with {total_actions} actions in first 24h',
+                        'timestamp': user_recent_actions[uid][-1]['timestamp']
+                    })
+        
+        suspicious_activities.sort(
+            key=lambda x: x.get('timestamp', '1970-01-01T00:00:00'), 
+            reverse=True
         )
         
-        if unauthorized_attempts > 5:
-            suspicious_activities.append({
-                'type': 'MULTIPLE_UNAUTHORIZED_ATTEMPTS',
-                'severity': 'HIGH',
-                'description': f'{unauthorized_attempts} unauthorized access attempts detected',
-                'count': unauthorized_attempts
-            })
+        total_unauthorized = sum(len(attempts) for attempts in unauthorized_by_user.values())
         
         return jsonify({
             'suspicious_activities': suspicious_activities,
             'total_logs_analyzed': len(all_logs),
-            'unauthorized_attempts': unauthorized_attempts
+            'unauthorized_attempts': total_unauthorized,
+            'detection_timestamp': datetime.now(timezone.utc).isoformat()
         }), 200
         
     except Exception as e:

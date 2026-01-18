@@ -22,34 +22,166 @@
         body {
             overflow: hidden;
         }
-        
+
+        .notification-sidebar {
+            position: fixed;
+            top: 49px;
+            right: 0;
+            width: 320px;
+            height: calc(100vh - 49px);
+            background: white;
+            border-left: 2px solid #ddd;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .notification-sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .notification-sidebar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .notification-sidebar::-webkit-scrollbar-thumb {
+            background: #235789;
+            border-radius: 10px;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: #C1292E;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .sidebar-header h3 {
+            margin: 0 0 5px 0;
+            font-size: 16px;
+            font-family: 'Space Grotesk', sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar-header p {
+            margin: 0;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .notification-list {
+            padding: 15px;
+        }
+
+        .notification-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+            transition: all 0.2s ease;
+        }
+
+        .notification-item:hover {
+            transform: translateX(-3px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+        }
+
+        .notification-item.high {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+
+        .notification-item.medium {
+            border-left-color: #ffc107;
+            background: #fffef5;
+        }
+
+        .notification-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .notification-user {
+            font-weight: 600;
+            color: #235789;
+            font-size: 13px;
+        }
+
+        .severity-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .severity-badge.high {
+            background: #dc3545;
+            color: white;
+        }
+
+        .severity-badge.medium {
+            background: #ffc107;
+            color: #E65100;
+        }
+
+        .notification-desc {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+
+        .notification-timestamp {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .no-notifications {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .no-notifications i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #ddd;
+        }
+
         .audit-container {
             padding: 30px;
-            max-width: 1400px;
-            margin: 0 auto;
+            padding-right: 350px;
             height: calc(100vh - 49px);
             overflow-y: auto;
             display: flex;
             flex-direction: column;
         }
-        
+
         .audit-container::-webkit-scrollbar {
             width: 10px;
         }
-        
+
         .audit-container::-webkit-scrollbar-track {
             background: transparent;
         }
-        
+
         .audit-container::-webkit-scrollbar-thumb {
             background: #235789;
             border-radius: 10px;
         }
-        
+
         .audit-container::-webkit-scrollbar-thumb:hover {
             background: #1a4567;
         }
-        
         .audit-header {
             display: flex;
             justify-content: space-between;
@@ -57,7 +189,7 @@
             margin-bottom: 30px;
             flex-shrink: 0;
         }
-        
+
         .filters {
             display: flex;
             gap: 15px;
@@ -65,58 +197,27 @@
             flex-wrap: wrap;
             flex-shrink: 0;
         }
-        
+
         .filter-group {
             display: flex;
             flex-direction: column;
             gap: 5px;
         }
-        
+
         .filter-group label {
             font-size: 12px;
             font-weight: 600;
             color: #666;
         }
-        
+
         .filter-group select,
         .filter-group input {
             padding: 8px 12px;
             border: 2px solid #ddd;
             border-radius: 6px;
             font-size: 14px;
+            font-family: 'Inter', sans-serif;
         }
-        
-        .alert-box {
-            background: #fff3cd;
-            border: 2px solid #ffc107;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            flex-shrink: 0;
-        }
-        
-        .alert-box.danger {
-            background: #f8d7da;
-            border-color: #dc3545;
-        }
-        
-        .alert-box h3 {
-            margin: 0 0 10px 0;
-            font-size: 16px;
-        }
-        
-        .suspicious-item {
-            background: white;
-            padding: 12px;
-            margin-bottom: 10px;
-            border-radius: 6px;
-            border-left: 4px solid #ffc107;
-        }
-        
-        .suspicious-item.high {
-            border-left-color: #dc3545;
-        }
-        
         .log-table {
             background: white;
             border-radius: 12px;
@@ -125,59 +226,59 @@
             flex: 1;
             min-height: 400px;
         }
-        
+
         .log-table::-webkit-scrollbar {
             width: 8px;
         }
-        
+
         .log-table::-webkit-scrollbar-track {
             background: #f1f1f1;
             border-radius: 10px;
         }
-        
+
         .log-table::-webkit-scrollbar-thumb {
             background: #235789;
             border-radius: 10px;
         }
-        
+
         .log-table::-webkit-scrollbar-thumb:hover {
             background: #1a4567;
         }
-        
+
         .log-entry {
             border-bottom: 1px solid #eee;
             padding: 15px 20px;
             transition: background 0.2s;
         }
-        
+
         .log-entry:hover {
             background: #f8f9fa;
         }
-        
+
         .log-header {
             display: flex;
             justify-content: space-between;
             align-items: start;
             margin-bottom: 8px;
         }
-        
+
         .log-action {
             font-weight: 600;
             color: #235789;
             font-size: 14px;
         }
-        
+
         .log-timestamp {
             font-size: 12px;
             color: #999;
         }
-        
+
         .log-user {
             font-size: 13px;
             color: #666;
             margin-bottom: 5px;
         }
-        
+
         .log-details {
             background: #f8f9fa;
             padding: 10px 12px;
@@ -187,34 +288,25 @@
             margin-top: 8px;
             line-height: 1.6;
         }
-        
+
         .detail-item {
             margin-bottom: 4px;
         }
-        
+
         .detail-item:last-child {
             margin-bottom: 0;
         }
-        
-        .detail-label {
-            font-weight: 600;
-            color: #235789;
+
+        @media (max-width: 1200px) {
+            .notification-sidebar {
+                display: none;
+            }
+            
+            .audit-container {
+                padding-right: 30px;
+            }
         }
-        
-        .badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        
-        .badge-success { background: #d4edda; color: #155724; }
-        .badge-danger { background: #f8d7da; color: #721c24; }
-        .badge-warning { background: #fff3cd; color: #856404; }
-        .badge-info { background: #d1ecf1; color: #0c5460; }
-        
+
         @media (max-width: 600px) {
             #navbar {
                 flex-wrap: wrap;
@@ -270,6 +362,18 @@
             Audit Logs
         </div>
     </nav>
+    <div class="notification-sidebar" id="notification-sidebar">
+        <div class="sidebar-header">
+            <h3><i class="fas fa-exclamation-triangle"></i> Security Alerts</h3>
+            <p id="alert-summary">Monitoring system activity...</p>
+        </div>
+        <div class="notification-list" id="notification-content">
+            <div class="no-notifications">
+                <i class="fas fa-shield-alt"></i>
+                <p>No suspicious activities detected</p>
+            </div>
+        </div>
+    </div>
 
     <div class="audit-container">
         <div class="audit-header">
@@ -277,12 +381,10 @@
                 <h1 style="margin: 0 0 10px 0; font-family: 'Space Grotesk', sans-serif; font-size: 32px;">Audit Logs</h1>
                 <p style="color: #666; margin: 0;">Monitor all system activities for security and fraud detection</p>
             </div>
-            <button onclick="refreshLogs()" style="padding: 10px 20px; background: #235789; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+            <button onclick="refreshLogs()" style="padding: 10px 20px; background: #235789; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: 'Space Grotesk', sans-serif;">
                 <i class="fas fa-sync-alt"></i> Refresh
             </button>
         </div>
-
-        <div id="fraud-alerts"></div>
 
         <div class="filters">
             <div class="filter-group">
@@ -299,6 +401,8 @@
                     <option value="ADMIN_AWARD_TILES">Award Tiles</option>
                     <option value="ADMIN_CREATE_THEME">Create Theme</option>
                     <option value="ADMIN_DELETE_THEME">Delete Theme</option>
+                    <option value="UNAUTHORIZED_ACCESS_ATTEMPT">Unauthorized Access</option>
+                    <option value="SUSPICIOUS_RAPID_ACTIONS">Suspicious Activity</option>
                 </select>
             </div>
             
@@ -306,9 +410,11 @@
                 <label>Limit</label>
                 <select id="limit-filter" onchange="applyFilters()">
                     <option value="50">50 entries</option>
-                    <option value="100" selected>100 entries</option>
+                    <option value="100">100 entries</option>
                     <option value="200">200 entries</option>
                     <option value="500">500 entries</option>
+                    <option value="1000">1000 entries</option>
+                    <option value="all">All Records</option>
                 </select>
             </div>
         </div>
@@ -320,16 +426,16 @@
             </div>
         </div>
     </div>
-
     <script src="{{url_for('static', filename='js/alert_modal.js')}}"></script>
     <script>
         let allLogs = [];
 
         async function loadLogs() {
-            const limit = document.getElementById('limit-filter').value;
+            const limitSelect = document.getElementById('limit-filter').value;
+            const limit = limitSelect === 'all' ? '10000' : limitSelect;
             const actionType = document.getElementById('action-filter').value;
             
-            const params = new URLSearchParams({ limit });
+            const params = new URLSearchParams({ limit: limit });
             if (actionType) params.append('action_type', actionType);
             
             try {
@@ -357,23 +463,55 @@
                 const response = await fetch('/api/admin/fraud-detection');
                 const data = await response.json();
                 
-                if (response.ok && data.suspicious_activities.length > 0) {
-                    const alertsHtml = `
-                        <div class="alert-box danger">
-                            <h3><i class="fas fa-exclamation-triangle"></i> Suspicious Activities Detected (${data.suspicious_activities.length})</h3>
-                            ${data.suspicious_activities.map(activity => `
-                                <div class="suspicious-item ${activity.severity.toLowerCase()}">
-                                    <strong>${activity.user_name}</strong> - ${activity.description}
-                                    <span class="badge badge-${activity.severity === 'HIGH' ? 'danger' : 'warning'}">${activity.severity}</span>
+                const suspiciousActivities = data.suspicious_activities || [];
+                const alertSummary = document.getElementById('alert-summary');
+                const notificationContent = document.getElementById('notification-content');
+                
+                if (suspiciousActivities.length > 0) {
+                    alertSummary.textContent = `${suspiciousActivities.length} alert${suspiciousActivities.length > 1 ? 's' : ''} detected`;
+                    
+                    const notificationsHtml = suspiciousActivities.map((activity, index) => {
+                        const timeAgo = activity.timestamp ? getTimeAgo(activity.timestamp) : 'Recently';
+                        const activityId = `alert-${index}`;
+                        return `
+                            <div class="notification-item ${activity.severity.toLowerCase()}" id="${activityId}">
+                                <div class="notification-meta">
+                                    <span class="notification-user">${activity.user_name || 'System'}</span>
+                                    <span class="severity-badge ${activity.severity.toLowerCase()}">${activity.severity}</span>
                                 </div>
-                            `).join('')}
+                                <div class="notification-desc">${activity.description}</div>
+                                <div class="notification-timestamp">
+                                    <i class="fas fa-clock"></i> ${timeAgo}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    notificationContent.innerHTML = notificationsHtml;
+                } else {
+                    alertSummary.textContent = 'All systems normal';
+                    notificationContent.innerHTML = `
+                        <div class="no-notifications">
+                            <i class="fas fa-shield-alt"></i>
+                            <p>No suspicious activities detected</p>
+                            <p style="font-size: 12px; margin-top: 10px;">Last checked: ${new Date().toLocaleTimeString()}</p>
                         </div>
                     `;
-                    document.getElementById('fraud-alerts').innerHTML = alertsHtml;
                 }
             } catch (e) {
                 console.error('Error loading fraud alerts:', e);
             }
+        }
+
+        function getTimeAgo(timestamp) {
+            const now = new Date();
+            const then = new Date(timestamp);
+            const seconds = Math.floor((now - then) / 1000);
+            
+            if (seconds < 60) return 'Just now';
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+            return `${Math.floor(seconds / 86400)}d ago`;
         }
 
         function formatDetails(details, actionType) {
@@ -458,7 +596,7 @@
                 return;
             }
             
-            const logsHtml = logs.reverse().map(log => {
+            const logsHtml = logs.map(log => {
                 const timestamp = new Date(log.timestamp).toLocaleString();
                 const formattedDetails = formatDetails(log.details, log.action_type);
                 
@@ -500,6 +638,9 @@
                 'ADMIN_CREATE_THEME': '<i class="fas fa-palette"></i>',
                 'ADMIN_DELETE_THEME': '<i class="fas fa-trash-alt"></i>',
                 'ADMIN_COMMENT_PROJECT': '<i class="fas fa-comment"></i>',
+                'UNAUTHORIZED_ACCESS_ATTEMPT': '<i class="fas fa-shield-alt"></i>',
+                'UNAUTHORIZED_ADMIN_ACCESS_ATTEMPT': '<i class="fas fa-user-shield"></i>',
+                'UNAUTHORIZED_DELETE_ATTEMPT': '<i class="fas fa-ban"></i>',
             };
             return icons[actionType] || '<i class="fas fa-circle"></i>';
         }
