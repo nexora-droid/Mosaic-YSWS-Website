@@ -28,7 +28,6 @@ HACKATIME_BASE_URL = "https://hackatime.hackclub.com/api/v1"
 
 HACKCLUB_CLIENT_ID = os.getenv("HACKCLUB_CLIENT_ID")
 HACKCLUB_CLIENT_SECRET = os.getenv("HACKCLUB_CLIENT_SECRET")
-HACKCLUB_REDIRECT_URI = os.getenv("HACKCLUB_REDIRECT_URI")
 HACKCLUB_AUTH_BASE = "https://auth.hackclub.com"
 
 ADMIN_SLACK_IDS = [
@@ -159,10 +158,11 @@ def main():
 
 @app.route('/signin', methods=['GET', 'POST'])
 def signin():
+    redirect_uri = f"{request.scheme}://{request.host}/hackclub/callback"
     auth_url = (
         f"{HACKCLUB_AUTH_BASE}/oauth/authorize?"
         f"client_id={HACKCLUB_CLIENT_ID}&"
-        f"redirect_uri={HACKCLUB_REDIRECT_URI}&"
+        f"redirect_uri={redirect_uri}&" 
         f"response_type=code&"
         f"scope=openid profile email name slack_id verification_status"
     )
@@ -182,7 +182,7 @@ def hackclub_callback():
     token_payload = {
         "client_id": HACKCLUB_CLIENT_ID,
         "client_secret": HACKCLUB_CLIENT_SECRET,
-        "redirect_uri": HACKCLUB_REDIRECT_URI,
+        "redirect_uri": f"{request.scheme}://{request.host}/hackclub/callback",
         "code": code,
         "grant_type": "authorization_code"
     }
