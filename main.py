@@ -497,6 +497,203 @@ def get_user_hackatime_projects():
         print(f"Error fetching Hackatime projects: {e}")
         return jsonify({'error': 'Internal Server Error'}), 500
 
+@app.route("/api/add-project", methods=['POST'])
+@login_required
+def add_project_api():
+    user_id = session.get('user_id')
+    user = get_user_by_id(user_id)
+    
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    data = request.get_json()
+    name = data.get('name')
+    detail = data.get('detail')
+    hackatime_project = data.get('hack_project')
+    
+    #input validation
+    is_valid, error_msg = validate_project_name(name)
+    if not is_valid:
+        return jsonify({'error': error_msg}), 400
+    
+    project_id = db_manager.generate_id()
+    
+    conn = db_manager.get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO projects 
+        (id, user_id, name, detail, hackatime_project, status, created_at,
+         total_seconds, approved_hours)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        project_id, user_id, name, detail, hackatime_project, 'draft',
+        datetime.now(timezone.utc).isoformat(), 0, 0.0
+    ))
+    conn.commit()
+    conn.close()
+    
+    logger.log_action(
+        action_type=ActionTypes.PROJECT_CREATE,
+        user_id=user_id,
+        user_name=user['name'],
+        details={
+            'project_id': project_id,
+            'project_name': name,
+            'hackatime_project': hackatime_project,
+            'detail': detail
+        }
+    )
+    
+    return jsonify({
+        'id': project_id,
+        'name': name,
+        'detail': detail,
+        'hackatime_project': hackatime_project,
+        'status': 'draft'
+    }), 201
+
+@app.route("/api/submit-project/<project_id>", methods=['POST'])
+@login_required
+def submit_project(project_id):
+    user_id = session.get('user_id')
+    user = get_user_by_id(user_id)
+    
+    conn = db_manager.get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM projects WHERE id = ?', (project_id,))
+    project_row = cursor.fetchone()
+    
+    if not project_row:
+        conn.close()
+        return jsonify({'error': 'Project not found'}), 404
+    
+    project = dict(project_row)
+    
+    if project.get('user_id') != user_id:
+        conn.close()
+        logger.log_action(
+            action_type=ActionTypes.UNAUTHORIZED_ACCESS_ATTEMPT,
+            user_id=user_id,
+            user_name=user['name'],
+            details={'project_id': project_id, 'action': 'submit_project'}
+        )
+        return jsonify({'error': 'Forbidden - Not your project'}), 403
+    
+    data = request.get_json()
+    
+    assigned_admin_id = None
+    if ADMIN_SLACK_IDS:
+        main_admin = get_user_by_slack_id(ADMIN_SLACK_IDS[0])
+        if main_admin:
+            assigned_admin_id = main_admin['id']
+    
+    cursor.execute('''
+        UPDATE projects SET
+            screenshot_url = ?,
+            github_url = ?,
+            demo_url = ?,
+            summary = ?,
+            languages = ?,
+            status = ?,
+            submitted_at = ?,
+            assigned_admin_id = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (
+        data.get('screenshot_url'),
+        data.get('github_url'),
+        data.get('demo_url'),
+        data.get('summary'),
+        data.get('languages'),
+        'in_review',
+        datetime.now(timezone.utc).isoformat(),
+        assigned_admin_id,
+        project_id
+    ))
+    
+    conn.commit()
+    conn.close()
+    
+    logger.log_action(
+        action_type=ActionTypes.PROJECT_SUBMIT,
+        user_id=user_id,
+        user_name=user['name'],
+        details={
+            'project_id': project_id,
+            'project_name': project.get('name'),
+            'github_url': data.get('github_url'),
+            'demo_url': data.get('demo_url'),
+            'languages': data.get('languages')
+        }
+    )
+    
+    return jsonify({'message': 'Project submitted for review'}), 200
+
+@app.route('/api/delete-project/<project_id>', methods=['DELETE'])
+@login_required
+def delete_project(project_id):
+    user_id = session.get('user_id')
+    user = get_user_by_id(user_id)
+    
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    conn = db_manager.get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM projects WHERE id = ?', (project_id,))
+    project_row = cursor.fetchone()
+    
+    if not project_row:
+        conn.close()
+        return jsonify({'error': 'Project not found'}), 404
+    
+    project = dict(project_row)
+    
+    is_owner = project.get('user_id') == user_id
+    is_admin_user = is_admin(user)
+    
+    if not is_owner and not is_admin_user:
+        conn.close()
+        logger.log_action(
+            action_type=ActionTypes.UNAUTHORIZED_DELETE_ATTEMPT,
+            user_id=user_id,
+            user_name=user['name'],
+            details={
+                'project_id': project_id,
+                'actual_owner': project.get('user_id'),
+                'project_status': project.get('status')
+            }
+        )
+        return jsonify({'error': 'Forbidden - Not your project'}), 403
+    
+    if not is_admin_user and project.get('status') != 'draft':
+        conn.close()
+        return jsonify({'error': 'Only draft projects can be deleted'}), 403
+    
+    try:
+        logger.log_action(
+            action_type=ActionTypes.PROJECT_DELETE,
+            user_id=user_id,
+            user_name=user['name'],
+            details={
+                'project_id': project_id,
+                'project_name': project.get('name'),
+                'project_status': project.get('status'),
+                'was_admin_delete': is_admin_user,
+                'approved_hours': project.get('approved_hours', 0)
+            }
+        )
+        
+        cursor.execute('DELETE FROM project_comments WHERE project_id = ?', (project_id,))
+        cursor.execute('DELETE FROM projects WHERE id = ?', (project_id,))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Project deleted successfully'}), 200
+    except Exception as e:
+        conn.close()
+        print(f"Error deleting project: {e}")
+        return jsonify({'error': 'Internal Server Error'}), 500
 
 @app.route("/api/project-details/<project_id>", methods=['GET'])
 @login_required
