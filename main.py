@@ -978,57 +978,6 @@ def update_project(project_id):
     
     return jsonify({'message': 'Project updated successfully'}), 200
 
-@app.route('/api/projects/<project_id>/submit', methods=['POST'])
-@login_required
-def submit_project(project_id):
-    user_id = session.get('user_id')
-    user = get_user_by_id(user_id)
-    
-    conn = db_manager.get_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM projects WHERE id = ? AND user_id = ?', (project_id, user_id))
-    project_row = cursor.fetchone()
-    
-    if not project_row:
-        conn.close()
-        return jsonify({'error': 'Project not found or unauthorized'}), 404
-    
-    project = dict(project_row)
-    
-    if project.get('status') == 'in_review':
-        conn.close()
-        return jsonify({'error': 'Project already submitted'}), 400
-    
-    if not project.get('name') or not project.get('hackatime_project'):
-        conn.close()
-        return jsonify({'error': 'Project must have name and Hackatime project before submission'}), 400
-    
-    cursor.execute('''
-        UPDATE projects SET
-            status = 'in_review',
-            submitted_at = ?,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-    ''', (
-        datetime.now(timezone.utc).isoformat(),
-        project_id
-    ))
-    
-    conn.commit()
-    conn.close()
-    
-    logger.log_action(
-        action_type=ActionTypes.PROJECT_SUBMIT,
-        user_id=user_id,
-        user_name=user.get('name'),
-        details={
-            'project_id': project_id,
-            'project_name': project.get('name'),
-            'hackatime_project': project.get('hackatime_project')
-        }
-    )
-    
-    return jsonify({'message': 'Project submitted for review'}), 200
 
 @app.route('/api/projects/<project_id>', methods=['DELETE'])
 @login_required
