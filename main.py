@@ -979,65 +979,6 @@ def update_project(project_id):
     return jsonify({'message': 'Project updated successfully'}), 200
 
 
-@app.route('/api/projects/<project_id>', methods=['DELETE'])
-@login_required
-def delete_project(project_id):
-    user_id = session.get('user_id')
-    user = get_user_by_id(user_id)
-    
-    conn = db_manager.get_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM projects WHERE id = ? AND user_id = ?', (project_id, user_id))
-    project_row = cursor.fetchone()
-    
-    if not project_row:
-        conn.close()
-        logger.log_action(
-            action_type=ActionTypes.UNAUTHORIZED_DELETE_ATTEMPT,
-            user_id=user_id,
-            user_name=user.get('name') if user else 'Unknown',
-            details={
-                'project_id': project_id,
-                'reason': 'project_not_found_or_unauthorized'
-            }
-        )
-        return jsonify({'error': 'Project not found or unauthorized'}), 404
-    
-    project = dict(project_row)
-    
-    if project.get('status') in ['approved', 'in_review']:
-        conn.close()
-        logger.log_action(
-            action_type=ActionTypes.UNAUTHORIZED_DELETE_ATTEMPT,
-            user_id=user_id,
-            user_name=user.get('name'),
-            details={
-                'project_id': project_id,
-                'project_name': project.get('name'),
-                'reason': f'cannot_delete_{project.get("status")}_project'
-            }
-        )
-        return jsonify({'error': f'Cannot delete project that is {project.get("status")}'}), 403
-    
-    project_name = project.get('name')
-    
-    cursor.execute('DELETE FROM projects WHERE id = ?', (project_id,))
-    conn.commit()
-    conn.close()
-    
-    logger.log_action(
-        action_type=ActionTypes.PROJECT_DELETE,
-        user_id=user_id,
-        user_name=user.get('name'),
-        details={
-            'project_id': project_id,
-            'project_name': project_name,
-            'project_status': project.get('status')
-        }
-    )
-    
-    return jsonify({'message': 'Project deleted successfully'}), 200
-
 @app.route('/leaderboard')
 def leaderboard():
     user_id = session.get('user_id')
